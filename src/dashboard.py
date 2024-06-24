@@ -77,7 +77,6 @@ def show():
             "Tensão da Bateria (V)",
             "Temperatura da Placa (°C)",
             "Temperatura do Sensor (°C)",
-            "Temperatura da Amostra (°C)",
             "Umidade (m³/m³x100)",
             "Salinidade (uS/cm)",
         ]:
@@ -95,7 +94,6 @@ def show():
             "Tensão da Bateria (V)",
             "Temperatura da Placa (°C)",
             "Temperatura do Sensor (°C)",
-            "Temperatura da Amostra (°C)",
             "Umidade (m³/m³x100)",
             "Salinidade (uS/cm)",
         ]:
