@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.express as px
+import pytz
 import streamlit as st
 from requests import request
 
@@ -19,7 +20,13 @@ def fetch_data():
         data = response.json()
         df = pd.DataFrame(data)
         if not df.empty and "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d %H:%M:%S")
+            # Converte a data de UTC para UTC-3
+            df["date"] = (
+                pd.to_datetime(df["date"])
+                .dt.tz_localize("UTC")
+                .dt.tz_convert("America/Sao_Paulo")
+                .dt.strftime("%d/%m/%Y %H:%M:%S")
+            )
         rename_columns(df)
         return df
     else:
@@ -40,7 +47,6 @@ def rename_columns(df):
             "sampleTemperature": "Temperatura da Amostra (°C)",
             "topp": "Umidade (m³/m³x100)",
             "hilhorst": "Salinidade (uS/cm)",
-            "moisture": "Umidade",
         }
         df.rename(columns=columns_mapping, inplace=True)
 
@@ -74,7 +80,6 @@ def show():
             "Temperatura da Amostra (°C)",
             "Umidade (m³/m³x100)",
             "Salinidade (uS/cm)",
-            "Umidade",
         ]:
             fig = px.line(
                 sensor_data,
@@ -93,7 +98,6 @@ def show():
             "Temperatura da Amostra (°C)",
             "Umidade (m³/m³x100)",
             "Salinidade (uS/cm)",
-            "Umidade",
         ]:
             fig = px.line(
                 df,

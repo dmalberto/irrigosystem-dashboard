@@ -1,9 +1,8 @@
-# amostras.py
-
 import io
 from datetime import datetime
 
 import pandas as pd
+import pytz
 import streamlit as st
 from requests import request
 
@@ -35,7 +34,13 @@ def fetch_data(page=None, page_size=15, start_date=None, end_date=None):
         data = response.json()
         df = pd.DataFrame(data)
         if not df.empty and "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"]).dt.strftime("%d/%m/%Y %H:%M:%S")
+            # Converte a data de UTC para UTC-3
+            df["date"] = (
+                pd.to_datetime(df["date"])
+                .dt.tz_localize("UTC")
+                .dt.tz_convert("America/Sao_Paulo")
+                .dt.strftime("%d/%m/%Y %H:%M:%S")
+            )
         rename_columns(df)
         df.drop(columns=["Umidade"], inplace=True)
         return df
@@ -122,7 +127,7 @@ def show():
 
     if not st.session_state.filtered and st.button("Carregar mais"):
         load_more()
-        st.rerun()
+        st.experimental_rerun()
 
     if not st.session_state.data.empty:
         with st.expander("Selecionar colunas para exportação"):
