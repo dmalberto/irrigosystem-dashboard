@@ -25,7 +25,6 @@ def fetch_data():
                 pd.to_datetime(df["date"])
                 .dt.tz_localize("UTC")
                 .dt.tz_convert("America/Sao_Paulo")
-                .dt.strftime("%d/%m/%Y %H:%M:%S")
             )
         rename_columns(df)
         return df
@@ -44,7 +43,6 @@ def rename_columns(df):
             "batteryVoltage": "Tensão da Bateria (V)",
             "boardTemperature": "Temperatura da Placa (°C)",
             "sensorTemperature": "Temperatura do Sensor (°C)",
-            "sampleTemperature": "Temperatura da Amostra (°C)",
             "topp": "Umidade (m³/m³x100)",
             "hilhorst": "Salinidade (uS/cm)",
         }
@@ -55,11 +53,13 @@ def rename_columns(df):
 def show():
     st.title("Dashboard de Sensores")
 
-    df = fetch_data().sort_values(["ID do Sensor", "Data"])
+    df = fetch_data()
 
     if df.empty:
         st.warning("Nenhum dado disponível.")
         return
+
+    df = df.sort_values(by="Data")  # Ordena por data
 
     view_option = st.selectbox(
         "Selecione a visualização",
