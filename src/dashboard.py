@@ -9,7 +9,7 @@ from login import get_token
 
 # Função para buscar dados da API
 def fetch_data():
-    url = f"{base_url}/api/measurements"
+    url = f"{base_url}/api/measurements?pageSize=10000"
     token = get_token()
     headers = {
         "Authorization": f"Bearer {token}",
