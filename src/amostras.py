@@ -42,7 +42,7 @@ def fetch_data(page=None, page_size=15, start_date=None, end_date=None):
                 .dt.strftime("%d/%m/%Y %H:%M:%S")
             )
         rename_columns(df)
-        df.drop(columns=["Umidade"], inplace=True)
+        df.drop(columns=["Umidade", "Temperatura da Amostra (°C)"], inplace=True)
         return df
     else:
         st.error("Falha ao buscar dados da API.")
