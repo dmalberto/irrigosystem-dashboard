@@ -23,7 +23,7 @@ def get_token():
     }
 
     response = request(
-        "POST", base_url + "/api/users/login", headers=headers, data=payload
+        "POST", base_url + "/api/users/login", headers=headers, data=payload, timeout=10
     )
 
     if response.status_code != 200:
