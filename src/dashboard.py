@@ -43,8 +43,8 @@ def rename_columns(df):
             "batteryVoltage": "Tensão da Bateria (V)",
             "boardTemperature": "Temperatura da Placa (°C)",
             "sensorTemperature": "Temperatura do Sensor (°C)",
-            "topp": "Umidade (m³/m³x100)",
-            "hilhorst": "Salinidade (uS/cm)",
+            "moisture": "Umidade (m³/m³x100)",
+            "salinity": "Salinidade (uS/cm)",
         }
         df.rename(columns=columns_mapping, inplace=True)
 
