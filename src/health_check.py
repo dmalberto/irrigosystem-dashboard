@@ -1,17 +1,19 @@
-# health_check.py
+# src/health_check.py
 
 import streamlit as st
 from requests import request
 
 from config import base_url
-from login import get_token
 
 
 # Função para buscar dados do health check da API
 def fetch_health_check():
     url = f"{base_url}/api/health"
 
-    token = get_token()
+    token = st.session_state.get("token")
+    if not token:
+        st.error("Usuário não autenticado.")
+        return {}
     headers = {
         "Authorization": f"Bearer {token}",
     }

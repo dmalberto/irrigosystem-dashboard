@@ -1,32 +1,43 @@
-import json
-import os
+# login.py
 
-from dotenv import load_dotenv
+import json
+
+import streamlit as st
 from requests import request
 
 from config import base_url
 
-# Carrega as variáveis de ambiente do arquivo .env
-load_dotenv()
 
-
-def get_token():
-    email = os.getenv("API_USER")
-    password = os.getenv("API_PWD")
-
-    if not email or not password:
-        raise ValueError("Email e senha devem ser definidos nas variáveis de ambiente.")
-
+def get_token(email, password):
     payload = json.dumps({"email": email, "password": password})
-    headers = {
-        "Content-Type": "application/json",
-    }
+    headers = {"Content-Type": "application/json"}
 
     response = request(
         "POST", base_url + "/api/users/login", headers=headers, data=payload, timeout=10
     )
 
     if response.status_code != 200:
-        raise Exception("Falha ao obter token. Verifique suas credenciais.")
+        st.error("Email ou senha inválidos.")
+        return None
 
     return response.json()["token"]
+
+
+def login():
+    st.title("Login")
+
+    email = st.text_input("Email")
+    password = st.text_input("Senha", type="password")
+
+    if st.button("Entrar"):
+        token = get_token(email, password)
+        if token:
+            st.session_state["token"] = token
+            st.session_state["authenticated"] = True
+            st.experimental_rerun()
+
+
+def logout():
+    st.session_state["authenticated"] = False
+    st.session_state["token"] = None
+    st.experimental_rerun()
