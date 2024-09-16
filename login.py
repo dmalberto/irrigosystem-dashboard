@@ -12,15 +12,27 @@ def get_token(email, password):
     payload = json.dumps({"email": email, "password": password})
     headers = {"Content-Type": "application/json"}
 
-    response = request(
-        "POST", base_url + "/api/users/login", headers=headers, data=payload, timeout=10
-    )
+    try:
+        response = request(
+            "POST",
+            base_url + "/api/users/login",
+            headers=headers,
+            data=payload,
+            timeout=10,
+        )
+    except Exception as e:
+        st.error(f"Erro ao conectar com a API de login: {e}")
+        return None
 
     if response.status_code != 200:
         st.error("Email ou senha inválidos.")
         return None
 
-    return response.json()["token"]
+    try:
+        return response.json()["token"]
+    except (ValueError, KeyError):
+        st.error("Resposta da API de login inválida.")
+        return None
 
 
 def login():
@@ -30,14 +42,23 @@ def login():
     password = st.text_input("Senha", type="password")
 
     if st.button("Entrar"):
-        token = get_token(email, password)
-        if token:
-            st.session_state["token"] = token
-            st.session_state["authenticated"] = True
-            st.experimental_rerun()
+        if not email or not password:
+            st.error("Por favor, preencha ambos os campos.")
+        else:
+            token = get_token(email, password)
+            if token:
+                # Define o cookie com o token
+                st.cookies["token"] = token
+                st.cookies.save()
+                st.session_state["authenticated"] = True
+                st.rerun()
 
 
 def logout():
+    # Remove o cookie de token
+    if "token" in st.cookies:
+        del st.cookies["token"]
+        st.cookies.save()
     st.session_state["authenticated"] = False
     st.session_state["token"] = None
     st.experimental_rerun()

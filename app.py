@@ -1,5 +1,11 @@
 # app.py
 
+import streamlit as st
+
+st.set_page_config(
+    page_title="IrrigoSystem Dashboard", layout="wide"
+)  # Deve ser a primeira chamada
+
 from dotenv import load_dotenv
 from streamlit_option_menu import option_menu
 
@@ -9,18 +15,22 @@ import src.controlador as controlador  # Dados do Controlador
 import src.dashboard as dashboard  # Gráficos
 import src.equipamentos as equipamentos  # Cadastro de Equipamentos
 import src.health_check as health_check
-from config import st
+from config import cookies, st
 from login import login, logout
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
-st.set_page_config(page_title="IrrigoSystem Dashboard", layout="wide")
-
 
 def main():
     if "authenticated" not in st.session_state:
         st.session_state["authenticated"] = False
+
+    # Verifica se há um token no cookie
+    token = cookies.get("token")
+    if token and not st.session_state["authenticated"]:
+        st.session_state["authenticated"] = True
+        st.session_state["token"] = token  # Atualiza o token na sessão
 
     if not st.session_state["authenticated"]:
         login()  # Chama a função de login
