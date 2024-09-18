@@ -5,4 +5,3 @@ Requests==2.32.3
 streamlit==1.35.0
 streamlit_option_menu==0.3.13
 pytz==2024.1
-streamlit-cookies-manager
