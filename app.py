@@ -1,25 +1,31 @@
-# app.py
+import os
 
 import streamlit as st
-
-st.set_page_config(
-    page_title="IrrigoSystem Dashboard", layout="wide"
-)  # Deve ser a primeira chamada
-
 from dotenv import load_dotenv
+from streamlit_cookies_manager import EncryptedCookieManager
 from streamlit_option_menu import option_menu
-
-import src.amostras as amostras  # Relatórios
-import src.consumo_energia as consumo_energia  # Relatórios de Consumo de Energia
-import src.controlador as controlador  # Dados do Controlador
-import src.dashboard as dashboard  # Gráficos
-import src.equipamentos as equipamentos  # Cadastro de Equipamentos
-import src.health_check as health_check
-from config import cookies, st
-from login import login, logout
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
+
+# Inicializa o EncryptedCookieManager
+cookies = EncryptedCookieManager(
+    prefix="irrigosystem-",
+    password=os.getenv("COOKIE_SECRET_PASSWORD"),
+)
+
+if not cookies.ready():
+    st.stop()
+
+# Importações dos módulos personalizados
+import src.amostras as amostras
+import src.consumo_energia as consumo_energia
+import src.controlador as controlador
+import src.dashboard as dashboard
+import src.equipamentos as equipamentos
+import src.health_check as health_check
+from config import base_url
+from login import login, logout
 
 
 def main():
@@ -33,12 +39,12 @@ def main():
         st.session_state["token"] = token  # Atualiza o token na sessão
 
     if not st.session_state["authenticated"]:
-        login()  # Chama a função de login
+        login(cookies)  # Passa o objeto cookies para a função de login
     else:
         st.title("IrrigoSystem Dashboard")
 
         # Botão de logout
-        st.sidebar.button("Sair", on_click=logout)
+        st.sidebar.button("Sair", on_click=logout, args=(cookies,))
 
         # Navegação horizontal com navbar
         app_mode = option_menu(
@@ -85,7 +91,7 @@ def main():
             controlador.show()
         elif app_mode == "Equipamentos":
             equipamentos.show()
-        elif app_mode == "Consumo de Energia":
+        elif app_mode == "Energia":
             consumo_energia.show()
         elif app_mode == "Health Check":
             health_check.show_health_check()

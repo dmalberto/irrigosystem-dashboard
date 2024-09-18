@@ -1,5 +1,3 @@
-# login.py
-
 import json
 
 import streamlit as st
@@ -35,7 +33,7 @@ def get_token(email, password):
         return None
 
 
-def login():
+def login(cookies):
     st.title("Login")
 
     email = st.text_input("Email")
@@ -48,17 +46,18 @@ def login():
             token = get_token(email, password)
             if token:
                 # Define o cookie com o token
-                st.cookies["token"] = token
-                st.cookies.save()
+                cookies["token"] = token
+                cookies.save()
                 st.session_state["authenticated"] = True
-                st.rerun()
+                st.session_state["token"] = token
+                st.experimental_rerun()
 
 
-def logout():
+def logout(cookies):
     # Remove o cookie de token
-    if "token" in st.cookies:
-        del st.cookies["token"]
-        st.cookies.save()
+    if "token" in cookies:
+        del cookies["token"]
+        cookies.save()
     st.session_state["authenticated"] = False
     st.session_state["token"] = None
     st.experimental_rerun()
