@@ -33,7 +33,7 @@ def get_token(email, password):
         return None
 
 
-def login(cookies):
+def login():
     st.title("Login")
 
     email = st.text_input("Email")
@@ -45,19 +45,16 @@ def login(cookies):
         else:
             token = get_token(email, password)
             if token:
-                # Define o cookie com o token
-                cookies["token"] = token
-                cookies.save()
-                st.session_state["authenticated"] = True
+                # Armazena o token na sessão
                 st.session_state["token"] = token
-                st.experimental_rerun()
+                st.session_state["authenticated"] = True
+                # Sinaliza que precisamos de um rerun
+                st.session_state["needs_rerun"] = True
 
 
-def logout(cookies):
-    # Remove o cookie de token
-    if "token" in cookies:
-        del cookies["token"]
-        cookies.save()
+def logout():
+    # Remove o token da sessão
+    st.session_state.pop("token", None)
     st.session_state["authenticated"] = False
-    st.session_state["token"] = None
-    st.experimental_rerun()
+    # Sinaliza que precisamos de um rerun
+    st.session_state["needs_rerun"] = True

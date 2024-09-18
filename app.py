@@ -1,50 +1,39 @@
-import os
-
 import streamlit as st
+
+st.set_page_config(
+    page_title="IrrigoSystem Dashboard", layout="wide"
+)  # Deve ser a primeira chamada
+
 from dotenv import load_dotenv
-from streamlit_cookies_manager import EncryptedCookieManager
 from streamlit_option_menu import option_menu
 
-# Carrega as variáveis de ambiente do arquivo .env
-load_dotenv()
-
-# Inicializa o EncryptedCookieManager
-cookies = EncryptedCookieManager(
-    prefix="irrigosystem-",
-    password=os.getenv("COOKIE_SECRET_PASSWORD"),
-)
-
-if not cookies.ready():
-    st.stop()
-
-# Importações dos módulos personalizados
-import src.amostras as amostras
-import src.consumo_energia as consumo_energia
-import src.controlador as controlador
-import src.dashboard as dashboard
-import src.equipamentos as equipamentos
+import src.amostras as amostras  # Relatórios
+import src.consumo_energia as consumo_energia  # Relatórios de Consumo de Energia
+import src.controlador as controlador  # Dados do Controlador
+import src.dashboard as dashboard  # Gráficos
+import src.equipamentos as equipamentos  # Cadastro de Equipamentos
 import src.health_check as health_check
 from config import base_url
 from login import login, logout
+
+# Carrega as variáveis de ambiente do arquivo .env
+load_dotenv()
 
 
 def main():
     if "authenticated" not in st.session_state:
         st.session_state["authenticated"] = False
 
-    # Verifica se há um token no cookie
-    token = cookies.get("token")
-    if token and not st.session_state["authenticated"]:
+    if "token" in st.session_state and st.session_state["token"]:
         st.session_state["authenticated"] = True
-        st.session_state["token"] = token  # Atualiza o token na sessão
 
     if not st.session_state["authenticated"]:
-        login(cookies)  # Passa o objeto cookies para a função de login
+        login()
     else:
         st.title("IrrigoSystem Dashboard")
 
         # Botão de logout
-        st.sidebar.button("Sair", on_click=logout, args=(cookies,))
+        st.sidebar.button("Sair", on_click=logout)
 
         # Navegação horizontal com navbar
         app_mode = option_menu(
@@ -91,7 +80,7 @@ def main():
             controlador.show()
         elif app_mode == "Equipamentos":
             equipamentos.show()
-        elif app_mode == "Energia":
+        elif app_mode == "Consumo de Energia":
             consumo_energia.show()
         elif app_mode == "Health Check":
             health_check.show_health_check()
@@ -99,3 +88,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    # Verifica se precisamos de um rerun
+    if st.session_state.get("needs_rerun", False):
+        st.session_state["needs_rerun"] = False
+        st.rerun()
