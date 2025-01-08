@@ -9,6 +9,10 @@ COPY . .
 # Instalar as dependências
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Adicionar variáveis de ambiente
+ENV COOKIE_SECRET_PASSWORD=53r9HgjDRNMCi6OnuZxjp3v9
+ENV API_URL=http://54.86.43.17
+
 # Expor a porta do Streamlit
 EXPOSE 8501
 
