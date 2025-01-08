@@ -26,7 +26,7 @@ def login():
             if token:
                 st.session_state["token"] = token
                 st.session_state["authenticated"] = True
-                st.experimental_rerun()  # Forçar recarregamento para exibir o app
+                st.rerun()  # Forçar recarregamento para exibir o app
             else:
                 st.error("Credenciais inválidas.")
 
@@ -34,4 +34,4 @@ def login():
 def logout():
     st.session_state.pop("token", None)
     st.session_state["authenticated"] = False
-    st.experimental_rerun()
+    st.rerun()

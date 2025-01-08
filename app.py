@@ -140,7 +140,6 @@ def main():
         st.markdown("---")
         if st.button("Sair", key="logout", help="Clique para sair do sistema"):
             logout()
-            st.rerun()
 
     # ---------- MENU HORIZONTAL (Option Menu) ----------
     app_mode = option_menu(
