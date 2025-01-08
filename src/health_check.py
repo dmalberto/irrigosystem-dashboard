@@ -1,51 +1,47 @@
-# src/health_check.py
-
 import streamlit as st
-from requests import request
 
-from config import base_url
+from api import api_request
 
 
-# Função para buscar dados do health check da API
 def fetch_health_check():
-    url = f"{base_url}/api/health"
-
-    token = st.session_state.get("token")
+    token = st.session_state.get("token", None)
     if not token:
-        st.error("Usuário não autenticado.")
         return {}
-    headers = {
-        "Authorization": f"Bearer {token}",
-    }
-    response = request("GET", url, headers=headers)
-    if response.status_code == 200:
+    response = api_request("GET", "/api/health", token=token)
+    if response and response.status_code == 200:
         return response.json()
-    else:
-        st.error("Falha ao buscar dados do health check.")
-        return {}
+    return {}
 
 
-# Função para mostrar dados de health check
-def show_health_check():
-    st.title("Health Check da Aplicação e Sensores")
-
+def show_health_in_sidebar():
+    # Obter dados
     data = fetch_health_check()
+    if not data:
+        st.write("Falha ao obter Health Check.")
+        return
 
-    if data:
-        # Exibir o status do broker
-        broker_status = data.get("broker", False)
-        broker_icon = "✅" if broker_status else "❌"
-        st.markdown(f"**Broker**: {broker_icon}")
+    st.markdown("## Status")
 
-        # Exibir o status das estações de monitoramento e sensores
-        for station in data.get("monitoringStations", []):
-            st.subheader(f"Estação: {station['name']}")
+    # Mostrando status do broker
+    broker_status = data.get("broker", False)
+    broker_icon = "✅" if broker_status else "❌"
+    st.write(f"Broker: {broker_icon}")
+
+    monitoring_stations = data.get("monitoringStations", [])
+    if not monitoring_stations:
+        st.write("Nenhuma estação encontrada.")
+    else:
+        grouped_stations = {}
+        for station in monitoring_stations:
+            station_name = station["name"]
+            grouped_stations.setdefault(station_name, [])
             for sensor in station.get("sensors", []):
-                sensor_status = sensor.get("status", False)
-                sensor_icon = "✅" if sensor_status else "❌"
-                st.markdown(f"**Sensor ID {sensor['id']}**: {sensor_icon}")
+                sensor_icon = "✅" if sensor.get("status", False) else "❌"
+                grouped_stations[station_name].append(
+                    f"Sensor #{sensor['id']}: {sensor_icon}"
+                )
 
-
-# Executa a função show_health_check
-if __name__ == "__main__":
-    show_health_check()
+        for group, sensors in grouped_stations.items():
+            st.markdown(f"### {group}")
+            for sensor in sensors:
+                st.write(sensor)
