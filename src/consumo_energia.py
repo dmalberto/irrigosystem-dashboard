@@ -7,6 +7,8 @@ import plotly.express as px
 import streamlit as st
 from requests import request
 
+from api import base_url
+
 
 # Função para buscar dados de consumo de energia da API
 def fetch_energy_consumption(start_date=None, end_date=None):
