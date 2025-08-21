@@ -3,17 +3,18 @@
 import streamlit as st
 
 from api import api_request
+from src.utils import handle_api_response, validate_email, validate_required_fields
 
 
 def create_user(token, data):
     endpoint = "/api/users/create"
-    resp = api_request("POST", endpoint, token=token, json=data)
+    resp = api_request("POST", endpoint, token=token, json=data, timeout=30)
     return resp
 
 
 def delete_user(token, email):
     endpoint = f"/api/users/{email}"
-    resp = api_request("DELETE", endpoint, token=token)
+    resp = api_request("DELETE", endpoint, token=token, timeout=30)
     return resp
 
 
@@ -33,7 +34,7 @@ def show():
         role = st.selectbox("Role", ["admin", "user"])
         submitted_create = st.form_submit_button("Criar")
         if submitted_create:
-            if email and password == confirm:
+            if validate_email(email) and password == confirm and len(password) >= 6:
                 data = {
                     "email": email,
                     "password": password,
@@ -41,14 +42,17 @@ def show():
                     "role": role,
                 }
                 resp = create_user(token, data)
-                if resp and resp.status_code == 200:
-                    st.success("Usuário criado com sucesso!")
-                else:
-                    st.error("Falha ao criar usuário.")
-                    if resp is not None:
-                        st.write(resp.text)
-            else:
-                st.error("Senhas não conferem ou email vazio.")
+                result = handle_api_response(
+                    resp, 
+                    success_message="Usuário criado com sucesso!",
+                    error_message="Falha ao criar usuário"
+                )
+                if result:
+                    st.rerun()
+            elif password != confirm:
+                st.error("Senhas não conferem.")
+            elif len(password) < 6:
+                st.error("Senha deve ter pelo menos 6 caracteres.")
 
     st.markdown("---")
 
@@ -57,16 +61,17 @@ def show():
         email_delete = st.text_input("Email do Usuário para Excluir")
         submitted_delete = st.form_submit_button("Excluir")
         if submitted_delete:
-            if email_delete:
+            if validate_email(email_delete):
                 resp = delete_user(token, email_delete)
-                if resp and resp.status_code == 200:
-                    st.success("Usuário excluído com sucesso!")
-                else:
-                    st.error("Falha ao excluir usuário.")
-                    if resp is not None:
-                        st.write(resp.text)
+                result = handle_api_response(
+                    resp,
+                    success_message="Usuário excluído com sucesso!", 
+                    error_message="Falha ao excluir usuário"
+                )
+                if result:
+                    st.rerun()
             else:
-                st.error("Informe o email do usuário para excluir.")
+                st.error("Informe um email válido para excluir.")
 
 
 if __name__ == "__main__":

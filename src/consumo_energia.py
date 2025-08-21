@@ -4,17 +4,23 @@ from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
+import requests
 import streamlit as st
-from requests import request
 
 from api import base_url
+from src.utils import handle_api_response, validate_date_range, safe_dataframe_display
 
 
 # Função para buscar dados de consumo de energia da API
-def fetch_energy_consumption(start_date=None, end_date=None):
+def fetch_energy_consumption(start_date=None, end_date=None, controller_id=None, period=None):
+    """Busca dados de consumo de energia da API com filtros aprimorados."""
     url = f"{base_url}/api/energy-consumptions"
     params = {}
 
+    if controller_id:
+        params["controllerId"] = controller_id
+    if period:
+        params["period"] = period
     if start_date:
         params["startDate"] = start_date
     if end_date:
@@ -23,51 +29,20 @@ def fetch_energy_consumption(start_date=None, end_date=None):
     token = st.session_state.get("token")
     if not token:
         st.error("Usuário não autenticado.")
-        return pd.DataFrame()
+        return []
 
     headers = {"Authorization": f"Bearer {token}"}
     try:
-        response = request("GET", url, headers=headers, params=params)
+        response = requests.get(url, headers=headers, params=params, timeout=30)
     except Exception as e:
         st.error(f"Erro ao conectar com a API de consumo de energia: {e}")
-        return pd.DataFrame()
+        return []
 
-    if response.status_code == 200:
-        try:
-            data = response.json()
-            if isinstance(data, list) and data:
-                df = pd.DataFrame(data)
-                if "date" in df.columns and "consumption" in df.columns:
-                    # Converte a data de UTC para UTC-3
-                    df["date"] = (
-                        pd.to_datetime(df["date"])
-                        .dt.tz_localize("UTC")
-                        .dt.tz_convert("America/Sao_Paulo")
-                    )
-                    return df
-                else:
-                    st.error(
-                        "Dados retornados não possuem as colunas 'date' e 'consumption'."
-                    )
-                    st.write("Estrutura dos dados retornados:", data)
-                    return pd.DataFrame()
-            else:
-                st.warning(
-                    "Nenhum dado de consumo de energia disponível para os filtros selecionados."
-                )
-                return pd.DataFrame()
-        except ValueError:
-            st.error(
-                "Falha ao decodificar a resposta JSON da API de consumo de energia."
-            )
-            st.write("Conteúdo da resposta:", response.text)
-            return pd.DataFrame()
-    else:
-        st.error(
-            f"Falha ao buscar dados de consumo de energia. Status Code: {response.status_code}"
-        )
-        st.write("Resposta da API:", response.text)
-        return pd.DataFrame()
+    data = handle_api_response(
+        response, 
+        error_message="Falha ao buscar dados de consumo de energia"
+    )
+    return data if data else []
 
 
 # Função para buscar tarifas vigentes da API
@@ -81,7 +56,7 @@ def fetch_current_tariffs():
 
     headers = {"Authorization": f"Bearer {token}"}
     try:
-        response = request("GET", url, headers=headers)
+        response = requests.get(url, headers=headers)
     except Exception as e:
         st.error(f"Erro ao conectar com a API de tarifas vigentes: {e}")
         return {}
@@ -120,12 +95,15 @@ def calculate_costs(df_consumption, tariffs):
     diurna = tariffs.get("diurnalRate", 0)
     noturna = tariffs.get("nightRate", 0)
 
-    # Definir horário de corte (exemplo: 18:00 para diurno/noturno)
-    corte_horario = 18
+    # Classificação de período: Diurno 06:00–17:59, Noturno 18:00–05:59
+    daytime_start_hour = 6
+    daytime_end_hour = 18
 
     # Separar consumo diurno e noturno
     df_consumption["periodo"] = df_consumption["date"].dt.hour.apply(
-        lambda x: "Diurno" if x >= corte_horario else "Noturno"
+        lambda hour: "Diurno"
+        if daytime_start_hour <= hour < daytime_end_hour
+        else "Noturno"
     )
 
     # Calcular custo

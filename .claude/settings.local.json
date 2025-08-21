@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(move srcactivations.py srcactivations_old.py)",
+      "Bash(move srcactivations_enhanced.py srcactivations.py)",
+      "Bash(powershell:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

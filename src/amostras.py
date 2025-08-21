@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from api import api_request
+from src.utils import handle_api_response, validate_date_range
 
 
 def format_datetime(date_value, time_value):
@@ -83,7 +84,7 @@ def fetch_data(
         params.append(f"stationId={station_id}")
 
     if params:
-        endpoint += "&" + "&".join(params)
+        endpoint += "&".join(params)
 
     with st.spinner("Carregando dados..."):
         response = api_request("GET", endpoint, token=token)

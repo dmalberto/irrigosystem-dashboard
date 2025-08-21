@@ -1,9 +1,11 @@
 from datetime import date, datetime, time, timedelta
 
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
 from api import api_request
+from src.utils import handle_api_response, safe_dataframe_display
 
 
 def format_datetime(date_value, time_value):
@@ -34,11 +36,9 @@ def fetch_controllers(token):
     Ex.: [{"id":2, "pumpPower":..., ...}, ...]
     """
     endpoint = "/api/controllers"
-    response = api_request("GET", endpoint, token=token)
-    if not response or response.status_code != 200:
-        st.error("Falha ao obter lista de controladores.")
-        return []
-    return response.json() if isinstance(response.json(), list) else []
+    response = api_request("GET", endpoint, token=token, timeout=30)
+    data = handle_api_response(response, error_message="Falha ao obter lista de controladores")
+    return data if data else []
 
 
 def fetch_statuses(token, controller_id, page=1, start_date=None, end_date=None):
@@ -54,8 +54,23 @@ def fetch_statuses(token, controller_id, page=1, start_date=None, end_date=None)
     if end_date:
         params["endDate"] = end_date
 
-    response = api_request("GET", endpoint, token=token, params=params)
+    response = api_request("GET", endpoint, token=token, params=params, timeout=30)
     return response
+
+
+def fetch_pump_activations(token, controller_id, period=None):
+    """
+    GET /api/controllers/{controllerId}/activations
+    Busca ativações da bomba por período
+    """
+    endpoint = f"/api/controllers/{controller_id}/activations"
+    params = {}
+    if period:
+        params["period"] = period
+    
+    response = api_request("GET", endpoint, token=token, params=params, timeout=30)
+    data = handle_api_response(response, error_message="Falha ao buscar ativações da bomba")
+    return data if data else []
 
 
 def load_more_statuses():
@@ -72,8 +87,10 @@ def load_more_statuses():
         start_date=st.session_state.get("act_start_date_str"),
         end_date=st.session_state.get("act_end_date_str"),
     )
-    if resp and resp.status_code == 200:
-        df_new = pd.DataFrame(resp.json())
+    
+    data = handle_api_response(resp, error_message="Falha ao carregar mais dados")
+    if data:
+        df_new = pd.DataFrame(data)
         if not df_new.empty:
             st.session_state.act_data = pd.concat(
                 [st.session_state.act_data, df_new], ignore_index=True
@@ -82,13 +99,105 @@ def load_more_statuses():
         st.warning("Não foi possível carregar mais dados.")
 
 
-def show():
-    st.title("Ativações (Statuses do Controlador)")
-
-    token = st.session_state.get("token", None)
-    if not token:
-        st.error("Usuário não autenticado.")
+def show_pump_activations(token):
+    """Exibe análises de ativações da bomba."""
+    st.subheader("Ativações da Bomba")
+    
+    # Buscar controladores
+    controllers = fetch_controllers(token)
+    if not controllers:
+        st.warning("Nenhum controlador disponível.")
         return
+    
+    controllers_dict = {
+        f"Controlador #{c['id']}": c["id"] for c in controllers if "id" in c
+    }
+    selected_label = st.selectbox(
+        "Selecione o Controlador", list(controllers_dict.keys()), key="pump_controller"
+    )
+    controller_id = controllers_dict[selected_label]
+    
+    # Seleção de período
+    period_options = {
+        "Hoje": "today",
+        "Esta semana": "week", 
+        "Este mês": "month",
+        "Este ano": "year"
+    }
+    
+    selected_period_label = st.selectbox(
+        "Período", list(period_options.keys())
+    )
+    selected_period = period_options[selected_period_label]
+    
+    if st.button("Buscar Ativações"):
+        activations = fetch_pump_activations(token, controller_id, selected_period)
+        
+        if activations:
+            st.success(f"Encontradas {len(activations)} ativações")
+            
+            # Criar DataFrame
+            df = pd.DataFrame(activations)
+            
+            # Renomear colunas para português
+            column_mapping = {
+                "status": "Status",
+                "startDate": "Data Início", 
+                "endDate": "Data Fim",
+                "duration": "Duração (min)"
+            }
+            df.rename(columns=column_mapping, inplace=True)
+            
+            # Converter datas
+            if "Data Início" in df.columns:
+                df["Data Início"] = pd.to_datetime(df["Data Início"]).dt.strftime("%d/%m/%Y %H:%M:%S")
+            if "Data Fim" in df.columns:
+                df["Data Fim"] = pd.to_datetime(df["Data Fim"]).dt.strftime("%d/%m/%Y %H:%M:%S")
+            
+            # Exibir tabela
+            st.dataframe(df, use_container_width=True)
+            
+            # Gráficos de análise
+            if "Duração (min)" in df.columns and len(df) > 0:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.metric(
+                        "Duração Total", 
+                        f"{df['Duração (min)'].sum():.1f} min"
+                    )
+                    st.metric(
+                        "Duração Média", 
+                        f"{df['Duração (min)'].mean():.1f} min"
+                    )
+                
+                with col2:
+                    st.metric(
+                        "Total de Ativações",
+                        str(len(df))
+                    )
+                    st.metric(
+                        "Maior Ativação",
+                        f"{df['Duração (min)'].max():.1f} min"
+                    )
+                
+                # Gráfico de durações
+                if len(df) > 1:
+                    fig = px.bar(
+                        df.reset_index(), 
+                        x="index", 
+                        y="Duração (min)",
+                        title="Duração das Ativações",
+                        labels={"index": "Ativação #"}
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Nenhuma ativação encontrada para o período selecionado.")
+
+
+def show_controller_status(token):
+    """Exibe status do controlador com paginação."""
+    st.subheader("Status do Controlador")
 
     # -----------------------------------------------------------------
     # Inicializa variáveis de estado, caso não existam
@@ -123,7 +232,7 @@ def show():
         f"Controlador #{c['id']}": c["id"] for c in controllers if "id" in c
     }
     selected_label = st.selectbox(
-        "Selecione o Controlador", list(controllers_dict.keys())
+        "Selecione o Controlador", list(controllers_dict.keys()), key="status_controller"
     )
     controller_id = controllers_dict[selected_label]
 
@@ -188,11 +297,11 @@ def show():
                 end_date_str,
             )
 
-        if resp and resp.status_code == 200:
-            df = pd.DataFrame(resp.json())
-            st.session_state.act_data = df
+        data = handle_api_response(resp, error_message="Falha ao buscar dados de status")
+        if data:
+            st.session_state.act_data = pd.DataFrame(data)
         else:
-            st.warning("Nenhum dado disponível ou falha na requisição.")
+            st.session_state.act_data = pd.DataFrame()
 
     # -----------------------------------------------------------------
     # Se temos act_data vazio e nenhuma requisição feita, busca inicial
@@ -215,11 +324,12 @@ def show():
                 st.session_state.act_start_date_str,
                 st.session_state.act_end_date_str,
             )
-        if resp and resp.status_code == 200:
-            df = pd.DataFrame(resp.json())
-            st.session_state.act_data = df
+        
+        data = handle_api_response(resp, error_message="Falha ao buscar dados iniciais")
+        if data:
+            st.session_state.act_data = pd.DataFrame(data)
         else:
-            st.warning("Nenhum dado disponível ou falha na requisição.")
+            st.session_state.act_data = pd.DataFrame()
 
     # -----------------------------------------------------------------
     # Exibição da tabela e botão "Carregar mais"
@@ -234,28 +344,33 @@ def show():
         ):
             st.markdown(f"**Período:** {start_disp} até {end_disp}")
 
-        st.table(st.session_state.act_data)
+        st.dataframe(st.session_state.act_data, use_container_width=True)
 
         # "Carregar mais" só aparece se já houve alguma busca
         if st.button("Carregar mais"):
             load_more_statuses()
             # Força o rerun
             st.rerun()
-
-        # Inserir um "anchor" para autoscroll no final da página
-        # Esse hack faz a tela rolar para o final após o rerun
-        st.markdown("<div id='bottom_of_table'></div>", unsafe_allow_html=True)
-        st.markdown(
-            """
-            <script>
-                var bottom = document.getElementById('bottom_of_table');
-                if (bottom) { bottom.scrollIntoView(); }
-            </script>
-            """,
-            unsafe_allow_html=True,
-        )
     else:
         st.info("Nenhum dado disponível para os filtros selecionados.")
+
+
+def show():
+    st.title("Ativações e Status do Controlador")
+    
+    token = st.session_state.get("token", None)
+    if not token:
+        st.error("Usuário não autenticado.")
+        return
+    
+    # Tabs para diferentes visualizações
+    tab1, tab2 = st.tabs(["Status do Controlador", "Ativações da Bomba"])
+    
+    with tab1:
+        show_controller_status(token)
+        
+    with tab2:
+        show_pump_activations(token)
 
 
 if __name__ == "__main__":

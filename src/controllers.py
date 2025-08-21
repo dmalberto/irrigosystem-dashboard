@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 
 from api import api_request
+from src.utils import handle_api_response, safe_dataframe_display, validate_positive_number
 
 
 def rename_controller_columns(df: pd.DataFrame):
@@ -10,7 +11,7 @@ def rename_controller_columns(df: pd.DataFrame):
         columns_mapping = {
             "id": "ID",
             "pumpPower": "Potência (W)",
-            "efficiency": "Eficiência (%)",
+            "efficiency": "Eficiência (0-1)",
             "powerFactor": "Fator de Potência",
         }
         df.rename(columns=columns_mapping, inplace=True)
@@ -19,24 +20,24 @@ def rename_controller_columns(df: pd.DataFrame):
 def get_controllers(token):
     """GET /api/controllers"""
     endpoint = "/api/controllers"
-    resp = api_request("GET", endpoint, token=token)
-    if resp and resp.status_code == 200:
-        data = resp.json()
-        if isinstance(data, list):
-            return data
-    st.error("Falha ao obter lista de controladores.")
-    return []
+    resp = api_request("GET", endpoint, token=token, timeout=30)
+    data = handle_api_response(resp, error_message="Falha ao obter lista de controladores")
+    return data if data else []
 
 
 def create_controller(token, pump_power, efficiency, power_factor):
     """POST /api/controllers"""
+    if not (validate_positive_number(pump_power, "Potência") and 
+            0 <= efficiency <= 1 and 0 <= power_factor <= 1):
+        return None
+        
     endpoint = "/api/controllers"
     body = {
         "pumpPower": pump_power,
         "efficiency": efficiency,
         "powerFactor": power_factor,
     }
-    resp = api_request("POST", endpoint, token=token, json=body)
+    resp = api_request("POST", endpoint, token=token, json=body, timeout=30)
     return resp
 
 
@@ -77,7 +78,7 @@ def show_create_controller(token):
     with st.form("FormCriarControlador"):
         pump_power = st.number_input("Potência (W)", min_value=0.0, step=1.0)
         efficiency = st.number_input(
-            "Eficiência (%)", min_value=0.0, max_value=1.0, step=0.01
+            "Eficiência (0–1)", min_value=0.0, max_value=1.0, step=0.01
         )
         power_factor = st.number_input(
             "Fator de Potência", min_value=0.0, max_value=1.0, step=0.01
@@ -120,8 +121,8 @@ def show_edit_controller(token):
             "Potência (W)", value=float(controller_row["Potência (W)"]), step=1.0
         )
         new_efficiency = st.number_input(
-            "Eficiência (%)",
-            value=float(controller_row["Eficiência (%)"]),
+            "Eficiência (0–1)",
+            value=float(controller_row["Eficiência (0-1)"]),
             min_value=0.0,
             max_value=1.0,
             step=0.01,

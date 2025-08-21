@@ -6,9 +6,10 @@ import requests
 import streamlit as st
 from dotenv import load_dotenv
 
-base_url = os.getenv("API_URL")
-
+# Garante que variáveis de ambiente do .env sejam carregadas antes de uso
 load_dotenv()
+
+base_url = os.getenv("API_URL")
 
 
 def get_token(email, password):
@@ -41,6 +42,10 @@ def api_request(method, endpoint, token=None, timeout=10, **kwargs):
     Função utilitária para realizar chamadas à API,
     centralizando tratamento de erros e inclusão de cabeçalhos.
     """
+    if not base_url:
+        st.error("Variável de ambiente API_URL não configurada.")
+        return None
+
     url = f"{base_url}{endpoint}"
     headers = kwargs.pop("headers", {})
     if token:
