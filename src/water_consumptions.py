@@ -1,77 +1,48 @@
 # src/water_consumptions.py
-
+"""
+Consumo de Água - Padronizado com UI Foundations v2
+"""
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
 from api import api_request
-from src.controllers import get_controllers
+from src.ui_components import (
+    controller_selector,
+    date_range_filter,
+    handle_api_response_v2,
+    show_loading_state
+)
 
 
-def selecionar_controlador():
-    """Componente de seleção de controlador
-
-    Retorna: (controller_id, controller_name) ou (None, None) se nenhum selecionado
+def get_water_consumption(token: str, controller_id=None, period=None, start_date=None, end_date=None):
+    """GET /api/consumptions/water com tratamento padronizado.
+    
+    Responses: 200 (Success), 400 (Bad Request), 500 (Server Error)
     """
-    token = st.session_state.get("token", None)
-    if not token:
-        st.error("Usuário não autenticado.")
-        return None, None
-
-    controllers = get_controllers(token)
-    if not controllers:
-        st.warning("Nenhum controlador cadastrado.")
-        return None, None
-
-    # Opção "Todos os Controladores" para não filtrar
-    controller_options = {"Todos os Controladores": None}
-    controller_options.update(
-        {
-            f"{controller['name']} (ID: {controller['id']})": controller["id"]
-            for controller in controllers
-        }
-    )
-
-    controller_choice = st.sidebar.selectbox(
-        "Filtrar por Controlador (Opcional)",
-        controller_options.keys(),
-        key="agua_controller_selector",
-    )
-    controller_id = controller_options[controller_choice]
-
-    return controller_id, controller_choice
-
-
-# Função para buscar dados de consumo de água da API
-def fetch_water_consumption(
-    start_date=None, end_date=None, controller_id=None, period=None
-):
-    endpoint = "/api/consumptions/water"
     params = {}
-
-    # Parâmetros conforme Swagger: controllerId (int64), period (string)
     if controller_id:
         params["controllerId"] = controller_id
     if period:
         params["period"] = period
-
-    # Mantém compatibilidade com parâmetros de data existentes (não estão no Swagger, mas podem ser úteis)
     if start_date:
         params["startDate"] = start_date
     if end_date:
         params["endDate"] = end_date
+    
+    response = api_request("GET", "/api/consumptions/water", token=token, params=params)
+    return response
 
-    token = st.session_state.get("token")
-    if not token:
-        st.error("Usuário não autenticado.")
-        return pd.DataFrame()
 
-    response = api_request("GET", endpoint, token=token, params=params)
+def fetch_water_consumption(token: str, controller_id=None, period=None, start_date=None, end_date=None):
+    """Busca dados de consumo de água com tratamento padronizado."""
+    response = get_water_consumption(token, controller_id, period, start_date, end_date)
+    
     if not response:
         st.error("Erro ao conectar com a API de consumo de água.")
         return pd.DataFrame()
-
+    
     if response.status_code == 200:
         try:
             data = response.json()
@@ -83,34 +54,25 @@ def fetch_water_consumption(
                     if df["date"].dt.tz is None:
                         df["date"] = df["date"].dt.tz_localize("UTC")
                     df["date"] = df["date"].dt.tz_convert("America/Sao_Paulo")
-
+                    
                     # Formata a data para exibição no formato brasileiro
                     df["date_display"] = df["date"].dt.strftime("%d/%m/%Y %H:%M:%S")
-
-                    return df
-                else:
-                    st.warning("Dados retornados não possuem a coluna 'date'.")
-                    return df
+                
+                return df
             else:
-                st.warning(
-                    "Nenhum dado de consumo de água disponível para os filtros selecionados."
-                )
+                st.info("📭 Nenhum dado de consumo de água disponível para os filtros selecionados.")
                 return pd.DataFrame()
         except ValueError:
-            st.error("Falha ao decodificar a resposta JSON da API de consumo de água.")
-            st.write("Conteúdo da resposta:", response.text)
+            st.error("Erro ao processar resposta JSON da API de consumo de água.")
             return pd.DataFrame()
     elif response.status_code == 400:
-        st.error("Requisição inválida. Verifique filtros.")
+        st.error("Parâmetros de filtro inválidos.")
         return pd.DataFrame()
     elif response.status_code == 500:
-        st.error("Erro interno ao consultar consumo de água.")
+        st.error("Erro interno do servidor ao buscar consumo de água.")
         return pd.DataFrame()
     else:
-        st.error(
-            f"Falha ao buscar dados de consumo de água. Status Code: {response.status_code}"
-        )
-        st.write("Resposta da API:", response.text)
+        st.error(f"Erro inesperado: {response.status_code}")
         return pd.DataFrame()
 
 
@@ -181,61 +143,68 @@ def display_consumption_analysis(df):
     st.markdown(f"**Consumo Mínimo:** {min_consumption:.2f} L")
 
 
-# Função principal para exibir os relatórios de consumo de água
 def show():
-    st.title("Relatórios de Consumo de Água")
+    st.title("Consumo de Água")
 
-    # Filtros de data
-    st.sidebar.header("Filtros de Data")
-    col1, col2 = st.sidebar.columns(2)
-    with col1:
-        start_date = st.sidebar.date_input(
-            "Data de Início", value=None, key="agua_start_date"
-        )
-    with col2:
-        end_date = st.sidebar.date_input("Data de Fim", value=None, key="agua_end_date")
+    token = st.session_state.get("token")
+    if not token:
+        st.error("Usuário não autenticado.")
+        return
 
+    # Filtros padronizados
+    st.sidebar.header("Filtros")
+    
+    # Seletor de controlador padronizado
+    controller_id, controller_name = controller_selector(
+        token, "Controlador (Opcional)", include_all_option=True
+    )
+    
+    # Filtro de período (conforme Swagger)
+    period = st.sidebar.selectbox(
+        "Período",
+        ["daily", "monthly", "yearly"],
+        help="Período de agregação dos dados"
+    )
+
+    # Filtros de data usando componente padronizado
+    start_date, end_date = date_range_filter(max_days=90)
     start_date_str = start_date.strftime("%Y-%m-%d") if start_date else None
     end_date_str = end_date.strftime("%Y-%m-%d") if end_date else None
 
-    # Filtro por controlador usando seletor
-    st.sidebar.header("Filtros por Controlador")
-    controller_id, controller_name = selecionar_controlador()
-
     # Botão para buscar dados
-    if st.sidebar.button("Buscar Dados"):
-        # Buscar dados de consumo de água
-        df_consumption = fetch_water_consumption(
-            start_date=start_date_str,
-            end_date=end_date_str,
-            controller_id=controller_id,
-        )
+    if st.sidebar.button("🔍 Buscar Dados"):
+        with show_loading_state("Carregando dados de consumo..."):
+            df_consumption = fetch_water_consumption(
+                token=token,
+                controller_id=controller_id,
+                period=period,
+                start_date=start_date_str,
+                end_date=end_date_str
+            )
 
-        # Processar dados de consumo
-        df_calculado = process_water_consumption(df_consumption)
-
-        if not df_calculado.empty:
-            # Exibir cabeçalho com info do controlador selecionado
+        if not df_consumption.empty:
+            # Cabeçalho informativo
             if controller_id:
-                st.markdown(f"**Controlador Selecionado:** {controller_name}")
+                st.markdown(f"**Controlador:** {controller_name}")
+            st.markdown(f"**Período:** {period}")
+
+            # Processar dados de consumo
+            df_calculado = process_water_consumption(df_consumption)
 
             # Exibir dados
-            st.subheader("Dados de Consumo de Água")
-            # Usar a coluna formatada para exibição
+            st.subheader("💧 Dados de Consumo de Água")
             display_columns = [
                 "date_display" if col == "date" else col
                 for col in ["date", "consumption"]
                 if col in df_calculado.columns
             ]
-            st.dataframe(df_calculado[display_columns])
+            st.dataframe(df_calculado[display_columns], use_container_width=True)
 
-            # Exibir gráficos
+            # Exibir gráficos e análise
             display_graphs(df_calculado)
-
-            # Exibir análise de consumo
             display_consumption_analysis(df_calculado)
         else:
-            st.warning("Nenhum dado disponível para os filtros selecionados.")
+            st.info("📭 Nenhum dado disponível para os filtros selecionados.")
 
 
 if __name__ == "__main__":
