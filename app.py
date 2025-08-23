@@ -2,6 +2,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from streamlit_option_menu import option_menu
 
+load_dotenv()
 # Importações dos módulos
 import src.activations as activations
 import src.amostras as amostras
@@ -18,7 +19,6 @@ import src.valves as valves
 # Exemplo da sua função de login/logout
 from login import login, logout
 
-load_dotenv()
 
 # ---------- Configurações de Página ----------
 st.set_page_config(
