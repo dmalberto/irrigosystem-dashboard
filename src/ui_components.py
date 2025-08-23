@@ -1,16 +1,19 @@
 # src/ui_components.py
 """
-UI Foundations + Padronização Global - v2
-Componentes padronizados de UI conforme especificação OpenAPI Swagger.
-Sistema completo de seletores, validações, cache e tratamento de API.
+UI Foundations + Padronização Global - v3
+Sistema completo de componentes padronizados com Design Tokens,
+FormBuilder, ComponentLibrary e estados avançados de UI/UX.
 """
 
 import re
 import time as time_module
+from contextlib import contextmanager
 from datetime import date, datetime, time, timedelta
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import streamlit as st
+
+from src.design_tokens import DesignTokens, get_color, get_spacing, get_shadow, generate_button_styles
 
 
 def format_datetime_for_api(date_value, time_value=None):
@@ -788,3 +791,526 @@ def get_navigation_label(module_name: str) -> str:
         if module_name in data["sections"]:
             return data["sections"][module_name]
     return module_name.replace("_", " ").title()
+
+
+# ========== FORMBUILDER CLASS ==========
+
+class FormBuilder:
+    """
+    Sistema de formulários padronizados com validação e styling unificado
+    """
+    
+    def __init__(self, form_id: str, title: str, description: str = None):
+        self.form_id = form_id
+        self.title = title
+        self.description = description
+        self.fields = []
+        self.validators = []
+        self.submit_button_config = {
+            "label": "✅ Salvar",
+            "type": "primary",
+            "use_container_width": True
+        }
+    
+    def add_text_field(self, label: str, key: str = None, placeholder: str = "", 
+                       help_text: str = "", required: bool = False, max_chars: int = None):
+        """Adiciona campo de texto"""
+        self.fields.append({
+            "type": "text",
+            "label": label + (" *" if required else ""),
+            "key": key or f"{self.form_id}_{label.lower().replace(' ', '_')}",
+            "placeholder": placeholder,
+            "help": help_text,
+            "required": required,
+            "max_chars": max_chars
+        })
+        return self
+    
+    def add_number_field(self, label: str, key: str = None, min_value: float = None,
+                        max_value: float = None, value: float = None, step: float = None,
+                        help_text: str = "", required: bool = False):
+        """Adiciona campo numérico"""
+        self.fields.append({
+            "type": "number",
+            "label": label + (" *" if required else ""),
+            "key": key or f"{self.form_id}_{label.lower().replace(' ', '_')}",
+            "min_value": min_value,
+            "max_value": max_value,
+            "value": value,
+            "step": step,
+            "help": help_text,
+            "required": required
+        })
+        return self
+    
+    def add_selectbox(self, label: str, options: List[str], key: str = None,
+                     index: int = 0, help_text: str = "", required: bool = False):
+        """Adiciona campo de seleção"""
+        self.fields.append({
+            "type": "selectbox",
+            "label": label + (" *" if required else ""),
+            "key": key or f"{self.form_id}_{label.lower().replace(' ', '_')}",
+            "options": options,
+            "index": index,
+            "help": help_text,
+            "required": required
+        })
+        return self
+        
+    def add_date_field(self, label: str, key: str = None, value: date = None,
+                      min_value: date = None, max_value: date = None,
+                      help_text: str = "", required: bool = False):
+        """Adiciona campo de data"""
+        self.fields.append({
+            "type": "date",
+            "label": label + (" *" if required else ""),
+            "key": key or f"{self.form_id}_{label.lower().replace(' ', '_')}",
+            "value": value,
+            "min_value": min_value,
+            "max_value": max_value,
+            "help": help_text,
+            "required": required
+        })
+        return self
+    
+    def add_checkbox(self, label: str, key: str = None, value: bool = False,
+                    help_text: str = ""):
+        """Adiciona checkbox"""
+        self.fields.append({
+            "type": "checkbox",
+            "label": label,
+            "key": key or f"{self.form_id}_{label.lower().replace(' ', '_')}",
+            "value": value,
+            "help": help_text
+        })
+        return self
+    
+    def add_validator(self, field_key: str, validator_func, error_message: str):
+        """Adiciona validador customizado"""
+        self.validators.append({
+            "field_key": field_key,
+            "validator": validator_func,
+            "error_message": error_message
+        })
+        return self
+    
+    def set_submit_button(self, label: str = "✅ Salvar", button_type: str = "primary"):
+        """Configura botão de submit"""
+        self.submit_button_config = {
+            "label": label,
+            "type": button_type,
+            "use_container_width": True
+        }
+        return self
+    
+    def render(self) -> Tuple[Dict[str, Any], bool]:
+        """Renderiza o formulário e retorna valores + status de submit"""
+        
+        # CSS styling para o form
+        st.markdown(f"""
+        <style>
+        .form-container {{
+            background-color: {get_color("background.primary")};
+            padding: {get_spacing("6")};
+            border-radius: {DesignTokens.RADIUS["lg"]};
+            box-shadow: {get_shadow("base")};
+            margin-bottom: {get_spacing("6")};
+        }}
+        .form-title {{
+            color: {get_color("text.primary")};
+            font-family: {DesignTokens.TYPOGRAPHY["font_families"]["heading"]};
+            font-size: {DesignTokens.TYPOGRAPHY["sizes"]["2xl"]};
+            font-weight: {DesignTokens.TYPOGRAPHY["weights"]["bold"]};
+            margin-bottom: {get_spacing("2")};
+        }}
+        .form-description {{
+            color: {get_color("text.secondary")};
+            font-size: {DesignTokens.TYPOGRAPHY["sizes"]["base"]};
+            margin-bottom: {get_spacing("6")};
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+        
+        with st.container():
+            st.markdown('<div class="form-container">', unsafe_allow_html=True)
+            
+            # Título e descrição
+            st.markdown(f'<h2 class="form-title">{self.title}</h2>', unsafe_allow_html=True)
+            if self.description:
+                st.markdown(f'<p class="form-description">{self.description}</p>', unsafe_allow_html=True)
+            
+            with st.form(self.form_id):
+                values = {}
+                
+                # Renderizar campos
+                for field in self.fields:
+                    if field["type"] == "text":
+                        values[field["key"]] = st.text_input(
+                            field["label"],
+                            key=field["key"],
+                            placeholder=field.get("placeholder", ""),
+                            help=field.get("help", ""),
+                            max_chars=field.get("max_chars")
+                        )
+                    
+                    elif field["type"] == "number":
+                        values[field["key"]] = st.number_input(
+                            field["label"],
+                            key=field["key"],
+                            min_value=field.get("min_value"),
+                            max_value=field.get("max_value"),
+                            value=field.get("value"),
+                            step=field.get("step"),
+                            help=field.get("help", "")
+                        )
+                    
+                    elif field["type"] == "selectbox":
+                        values[field["key"]] = st.selectbox(
+                            field["label"],
+                            field["options"],
+                            key=field["key"],
+                            index=field.get("index", 0),
+                            help=field.get("help", "")
+                        )
+                    
+                    elif field["type"] == "date":
+                        values[field["key"]] = st.date_input(
+                            field["label"],
+                            key=field["key"],
+                            value=field.get("value"),
+                            min_value=field.get("min_value"),
+                            max_value=field.get("max_value"),
+                            help=field.get("help", "")
+                        )
+                    
+                    elif field["type"] == "checkbox":
+                        values[field["key"]] = st.checkbox(
+                            field["label"],
+                            key=field["key"],
+                            value=field.get("value", False),
+                            help=field.get("help", "")
+                        )
+                
+                # Botão de submit com styling
+                st.markdown(generate_button_styles(), unsafe_allow_html=True)
+                submitted = st.form_submit_button(
+                    self.submit_button_config["label"],
+                    type=self.submit_button_config["type"],
+                    use_container_width=self.submit_button_config["use_container_width"]
+                )
+                
+                # Validação
+                if submitted:
+                    errors = []
+                    
+                    # Validações de required
+                    for field in self.fields:
+                        if field.get("required", False):
+                            field_value = values.get(field["key"])
+                            if not field_value or (isinstance(field_value, str) and not field_value.strip()):
+                                errors.append(f"Campo '{field['label']}' é obrigatório.")
+                    
+                    # Validações customizadas
+                    for validator in self.validators:
+                        field_value = values.get(validator["field_key"])
+                        if not validator["validator"](field_value):
+                            errors.append(validator["error_message"])
+                    
+                    # Exibir erros
+                    if errors:
+                        for error in errors:
+                            st.error(error)
+                        return values, False
+                
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+        return values, submitted
+
+
+# ========== COMPONENT LIBRARY ==========
+
+class ComponentLibrary:
+    """
+    Biblioteca de componentes visuais padronizados
+    """
+    
+    @staticmethod
+    def card(title: str, content: str, actions: List[Dict] = None, 
+             icon: str = None, color: str = "primary"):
+        """
+        Card padronizado com título, conteúdo e ações opcionais
+        """
+        card_color = get_color(color)
+        
+        st.markdown(f"""
+        <style>
+        .custom-card {{
+            background-color: {get_color("background.primary")};
+            padding: {get_spacing("6")};
+            border-radius: {DesignTokens.RADIUS["lg"]};
+            box-shadow: {get_shadow("md")};
+            border-left: 4px solid {card_color};
+            margin-bottom: {get_spacing("4")};
+        }}
+        .card-title {{
+            color: {card_color};
+            font-family: {DesignTokens.TYPOGRAPHY["font_families"]["heading"]};
+            font-size: {DesignTokens.TYPOGRAPHY["sizes"]["lg"]};
+            font-weight: {DesignTokens.TYPOGRAPHY["weights"]["semibold"]};
+            margin-bottom: {get_spacing("3")};
+        }}
+        .card-content {{
+            color: {get_color("text.primary")};
+            line-height: {DesignTokens.TYPOGRAPHY["line_heights"]["relaxed"]};
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+        
+        with st.container():
+            st.markdown('<div class="custom-card">', unsafe_allow_html=True)
+            
+            # Título com ícone opcional
+            title_html = f"{icon} {title}" if icon else title
+            st.markdown(f'<h3 class="card-title">{title_html}</h3>', unsafe_allow_html=True)
+            
+            # Conteúdo
+            st.markdown(f'<div class="card-content">{content}</div>', unsafe_allow_html=True)
+            
+            # Ações (botões)
+            if actions:
+                st.markdown("<br>", unsafe_allow_html=True)
+                cols = st.columns(len(actions))
+                for i, action in enumerate(actions):
+                    with cols[i]:
+                        if st.button(action["label"], key=action.get("key", f"action_{i}")):
+                            if action.get("callback"):
+                                action["callback"]()
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+    
+    @staticmethod
+    def metric_card(title: str, value: str, delta: str = None, 
+                   delta_color: str = "normal", icon: str = "📊"):
+        """
+        Card de métrica com valor, delta e ícone
+        """
+        delta_colors = {
+            "normal": get_color("success"),
+            "inverse": get_color("error"),
+            "off": get_color("text.secondary")
+        }
+        
+        st.markdown(f"""
+        <style>
+        .metric-card {{
+            background: linear-gradient(135deg, {get_color("primary")}15 0%, {get_color("background.primary")} 100%);
+            padding: {get_spacing("6")};
+            border-radius: {DesignTokens.RADIUS["xl"]};
+            box-shadow: {get_shadow("lg")};
+            text-align: center;
+            margin-bottom: {get_spacing("4")};
+        }}
+        .metric-icon {{
+            font-size: {DesignTokens.TYPOGRAPHY["sizes"]["3xl"]};
+            margin-bottom: {get_spacing("2")};
+        }}
+        .metric-title {{
+            color: {get_color("text.secondary")};
+            font-size: {DesignTokens.TYPOGRAPHY["sizes"]["sm"]};
+            font-weight: {DesignTokens.TYPOGRAPHY["weights"]["medium"]};
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: {get_spacing("2")};
+        }}
+        .metric-value {{
+            color: {get_color("text.primary")};
+            font-size: {DesignTokens.TYPOGRAPHY["sizes"]["4xl"]};
+            font-weight: {DesignTokens.TYPOGRAPHY["weights"]["bold"]};
+            margin-bottom: {get_spacing("2")};
+        }}
+        .metric-delta {{
+            color: {delta_colors.get(delta_color, delta_colors["normal"])};
+            font-size: {DesignTokens.TYPOGRAPHY["sizes"]["sm"]};
+            font-weight: {DesignTokens.TYPOGRAPHY["weights"]["semibold"]};
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+        
+        with st.container():
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-icon">{icon}</div>
+                <div class="metric-title">{title}</div>
+                <div class="metric-value">{value}</div>
+                {f'<div class="metric-delta">{delta}</div>' if delta else ''}
+            </div>
+            """, unsafe_allow_html=True)
+    
+    @staticmethod
+    def alert(message: str, alert_type: str = "info", dismissible: bool = True):
+        """
+        Alerta padronizado com diferentes tipos
+        """
+        type_configs = {
+            "info": {"color": get_color("info"), "icon": "ℹ️"},
+            "success": {"color": get_color("success"), "icon": "✅"},
+            "warning": {"color": get_color("warning"), "icon": "⚠️"},
+            "error": {"color": get_color("error"), "icon": "❌"}
+        }
+        
+        config = type_configs.get(alert_type, type_configs["info"])
+        
+        st.markdown(f"""
+        <style>
+        .custom-alert {{
+            background-color: {config["color"]}15;
+            border: 1px solid {config["color"]}50;
+            border-left: 4px solid {config["color"]};
+            color: {get_color("text.primary")};
+            padding: {get_spacing("4")};
+            border-radius: {DesignTokens.RADIUS["md"]};
+            margin-bottom: {get_spacing("4")};
+            display: flex;
+            align-items: center;
+            gap: {get_spacing("3")};
+        }}
+        .alert-icon {{
+            font-size: {DesignTokens.TYPOGRAPHY["sizes"]["lg"]};
+        }}
+        .alert-message {{
+            flex: 1;
+            font-size: {DesignTokens.TYPOGRAPHY["sizes"]["base"]};
+            line-height: {DesignTokens.TYPOGRAPHY["line_heights"]["normal"]};
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+        
+        st.markdown(f"""
+        <div class="custom-alert">
+            <div class="alert-icon">{config["icon"]}</div>
+            <div class="alert-message">{message}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# ========== ENHANCED LOADING STATES ==========
+
+class LoadingStates:
+    """
+    Estados de loading avançados com progress e cancelamento
+    """
+    
+    @staticmethod
+    @contextmanager
+    def progress_with_status(title: str, total_steps: int = 100):
+        """Loading com barra de progresso e status textual"""
+        
+        # Container para o loading
+        loading_container = st.container()
+        
+        with loading_container:
+            st.markdown(f"""
+            <style>
+            .loading-container {{
+                background-color: {get_color("background.secondary")};
+                padding: {get_spacing("6")};
+                border-radius: {DesignTokens.RADIUS["lg"]};
+                text-align: center;
+                margin: {get_spacing("4")} 0;
+            }}
+            .loading-title {{
+                color: {get_color("text.primary")};
+                font-size: {DesignTokens.TYPOGRAPHY["sizes"]["lg"]};
+                font-weight: {DesignTokens.TYPOGRAPHY["weights"]["semibold"]};
+                margin-bottom: {get_spacing("4")};
+            }}
+            </style>
+            """, unsafe_allow_html=True)
+            
+            st.markdown('<div class="loading-container">', unsafe_allow_html=True)
+            st.markdown(f'<div class="loading-title">{title}</div>', unsafe_allow_html=True)
+            
+            # Elementos de progresso
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        try:
+            yield progress_bar, status_text, loading_container
+        finally:
+            loading_container.empty()
+    
+    @staticmethod
+    @contextmanager
+    def spinner_with_cancel(message: str, cancel_callback=None):
+        """Spinner com opção de cancelamento"""
+        
+        col1, col2 = st.columns([4, 1])
+        
+        with col2:
+            if cancel_callback and st.button("❌ Cancelar", key="cancel_loading"):
+                cancel_callback()
+                st.stop()
+        
+        with col1:
+            with st.spinner(message):
+                yield
+
+
+# ========== ENHANCED EMPTY STATES ==========
+
+def enhanced_empty_state(title: str, description: str, action_button: Dict = None, 
+                        icon: str = "📭", illustration: str = None):
+    """
+    Estado vazio informativo com call-to-action opcional
+    """
+    
+    st.markdown(f"""
+    <style>
+    .empty-state {{
+        text-align: center;
+        padding: {get_spacing("12")} {get_spacing("6")};
+        background-color: {get_color("background.secondary")};
+        border-radius: {DesignTokens.RADIUS["xl"]};
+        margin: {get_spacing("8")} 0;
+    }}
+    .empty-icon {{
+        font-size: {DesignTokens.TYPOGRAPHY["sizes"]["5xl"]};
+        margin-bottom: {get_spacing("4")};
+        opacity: 0.7;
+    }}
+    .empty-title {{
+        color: {get_color("text.primary")};
+        font-family: {DesignTokens.TYPOGRAPHY["font_families"]["heading"]};
+        font-size: {DesignTokens.TYPOGRAPHY["sizes"]["2xl"]};
+        font-weight: {DesignTokens.TYPOGRAPHY["weights"]["bold"]};
+        margin-bottom: {get_spacing("3")};
+    }}
+    .empty-description {{
+        color: {get_color("text.secondary")};
+        font-size: {DesignTokens.TYPOGRAPHY["sizes"]["base"]};
+        line-height: {DesignTokens.TYPOGRAPHY["line_heights"]["relaxed"]};
+        margin-bottom: {get_spacing("6")};
+        max-width: 480px;
+        margin-left: auto;
+        margin-right: auto;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown(f"""
+    <div class="empty-state">
+        <div class="empty-icon">{icon}</div>
+        <div class="empty-title">{title}</div>
+        <div class="empty-description">{description}</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Botão de ação opcional
+    if action_button:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button(action_button["label"], type="primary", use_container_width=True):
+                if action_button.get("callback"):
+                    action_button["callback"]()

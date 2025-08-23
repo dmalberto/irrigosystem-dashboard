@@ -16,6 +16,9 @@ import src.tariff_schedules as tariff_schedules
 import src.users as users
 import src.valves as valves
 import src.water_consumptions as water_consumptions
+# Design system
+from src.design_tokens import DesignTokens, generate_button_styles
+from src.ui_components import ComponentLibrary
 # Exemplo da sua função de login/logout
 from login import login, logout
 
@@ -140,114 +143,222 @@ def main():
         if st.button("Sair", key="logout", help="Clique para sair do sistema"):
             logout()
 
-    # ---------- MENU HORIZONTAL (Option Menu) ----------
-    app_mode = option_menu(
-        menu_title=None,
-        options=[
-            "Medições",
-            "Dashboard",
-            "Controladores",
-            "Válvulas",
-            "Consumo de Energia",
-            "Consumo de Água",
-            "Tarifas",
-            "Relatórios de Medições",
-            "Ativações de Bomba",
-            "Usuários",
-            "Estações de Monitoramento",
-        ],
-        icons=[
-            "clipboard-data",
-            "bar-chart",
-            "gear",
-            "droplet-half",
-            "lightning-charge",
-            "droplet",
-            "cash-stack",
-            "journal-code",
-            "clock-history",
-            "people",
-            "tools",
-        ],
-        menu_icon="cast",
-        default_index=0,
-        orientation="horizontal",
-        styles={
-            # Barra de botões
-            "container": {
-                "background-color": MENU_BACKGROUND_COLOR,
-                "border-radius": "5px",
-                "padding": "5px 8px",  # Pouco padding
-                "margin-bottom": "10px",
-                "box-shadow": "0px 4px 6px rgba(0, 0, 0, 0.1)",
-                "border": "1px solid #e8e8e8",
-                "display": "flex",
-                "justify-content": "space-evenly",
-                "flex-wrap": "wrap",
-            },
-            # Ícone dentro do botão
-            "icon": {
-                "font-size": "1.1rem",
-                "margin-bottom": "3px",
-            },
-            # Botões
-            "nav-link": {
-                "height": "70px",  # Aumentamos altura
-                "width": "110px",  # Reduzimos largura
-                "display": "flex",
-                "flex-direction": "column",  # Ícone acima do texto
-                "justify-content": "center",
-                "align-items": "center",
-                "font-family": "'Roboto', sans-serif",
-                "font-size": "14px",
-                "font-weight": "400",
-                "color": TEXT_COLOR,
-                "text-align": "center",
-                "margin": "4px",
-                "padding": "4px",  # Pouco padding interno
-                "border-radius": "4px",
-                "background-color": MENU_BACKGROUND_COLOR,
-                "transition": "all 0.3s ease-in-out",
-            },
-            # Hover
-            "nav-link:hover": {
-                "background-color": MENU_HOVER_COLOR,
-                "font-weight": "400",
-                "color": TEXT_COLOR,
-            },
-            # Selecionado
-            "nav-link-selected": {
-                "background-color": MENU_SELECTED_BACKGROUND_COLOR,
-                "color": SECONDARY_COLOR,
-                "font-weight": "400",
-            },
+    # ---------- SISTEMA DE NAVEGAÇÃO CATEGORIZADO ----------
+    
+    # Definir categorias e páginas
+    MENU_CATEGORIES = {
+        "📊 Monitoramento": {
+            "icon": "bar-chart-line",
+            "pages": ["Dashboard", "Medições", "Relatórios de Medições"],
+            "modules": ["dashboard", "measurements", "measurement_reports"]
         },
-    )
+        "🎮 Controle": {
+            "icon": "sliders", 
+            "pages": ["Controladores", "Válvulas", "Ativações de Bomba"],
+            "modules": ["controllers", "valves", "controller_activations"]
+        },
+        "⚡ Consumo": {
+            "icon": "lightning-charge",
+            "pages": ["Consumo de Energia", "Consumo de Água"],
+            "modules": ["energy_consumptions", "water_consumptions"]
+        },
+        "⚙️ Configuração": {
+            "icon": "gear",
+            "pages": ["Estações de Monitoramento", "Tarifas", "Usuários"],
+            "modules": ["monitoring_stations", "tariff_schedules", "users"]
+        }
+    }
+    
+    # Navegação com tabs categorizadas  
+    category_tabs = st.tabs(list(MENU_CATEGORIES.keys()))
+    
+    app_mode = None
+    selected_module = None
+    
+    for i, (category, config) in enumerate(MENU_CATEGORIES.items()):
+        with category_tabs[i]:
+            # Menu horizontal dentro de cada categoria
+            if config["pages"]:
+                # Dashboard sempre primeiro na categoria Monitoramento
+                default_idx = 0
+                page_selected = option_menu(
+                    menu_title=None,
+                    options=config["pages"],
+                    icons=["house" if page == "Dashboard" else config["icon"] for page in config["pages"]],
+                    default_index=default_idx,
+                    orientation="horizontal",
+                    styles={
+                        "container": {
+                            "background-color": DesignTokens.COLORS["background"]["secondary"],
+                            "border-radius": DesignTokens.RADIUS["lg"],
+                            "padding": DesignTokens.SPACING["3"],
+                            "margin-bottom": DesignTokens.SPACING["4"],
+                            "box-shadow": DesignTokens.SHADOWS["base"],
+                        },
+                        "nav-link": {
+                            "font-family": DesignTokens.TYPOGRAPHY["font_families"]["primary"],
+                            "font-size": DesignTokens.TYPOGRAPHY["sizes"]["sm"],
+                            "font-weight": DesignTokens.TYPOGRAPHY["weights"]["medium"],
+                            "color": DesignTokens.COLORS["text"]["primary"],
+                            "border-radius": DesignTokens.RADIUS["md"],
+                            "padding": f"{DesignTokens.SPACING['3']} {DesignTokens.SPACING['4']}",
+                            "margin": DesignTokens.SPACING["1"],
+                            "text-align": "center",
+                            "transition": "all 0.2s ease",
+                        },
+                        "nav-link:hover": {
+                            "background-color": DesignTokens.COLORS["primary"] + "20",
+                            "color": DesignTokens.COLORS["primary"],
+                        },
+                        "nav-link-selected": {
+                            "background-color": DesignTokens.COLORS["primary"],
+                            "color": DesignTokens.COLORS["text"]["inverse"],
+                            "font-weight": DesignTokens.TYPOGRAPHY["weights"]["semibold"],
+                        }
+                    }
+                )
+                
+                # Mapear página selecionada para módulo
+                if page_selected in config["pages"]:
+                    page_idx = config["pages"].index(page_selected)
+                    app_mode = page_selected
+                    selected_module = config["modules"][page_idx]
+                    break
     st.markdown("---")
 
     # ---------- CARREGAMENTO DE PÁGINAS ----------
-    if app_mode == "Medições":
+    
+    # CSS global para componentes
+    st.markdown(generate_button_styles(), unsafe_allow_html=True)
+    
+    # Dashboard como default se nenhuma página foi selecionada
+    if not app_mode:
+        app_mode = "Dashboard"
+        selected_module = "dashboard"
+    
+    if app_mode == "Dashboard":
+        show_enhanced_dashboard()
+    elif app_mode == "Medições":
         measurements.show()
-    elif app_mode == "Dashboard":
-        dashboard.show()
+    elif app_mode == "Relatórios de Medições":
+        measurement_reports.show()
     elif app_mode == "Controladores":
         controllers.show()
     elif app_mode == "Válvulas":
         valves.show()
+    elif app_mode == "Ativações de Bomba":
+        controller_activations.show()
     elif app_mode == "Consumo de Energia":
         energy_consumptions.show()
     elif app_mode == "Consumo de Água":
         water_consumptions.show()
-    elif app_mode == "Tarifas":
-        tariff_schedules.show()
-    elif app_mode == "Relatórios de Medições":
-        measurement_reports.show()
-    elif app_mode == "Ativações de Bomba":
-        controller_activations.show()
-    elif app_mode == "Usuários":
-        users.show()
     elif app_mode == "Estações de Monitoramento":
         monitoring_stations.show()
+    elif app_mode == "Tarifas":
+        tariff_schedules.show()
+    elif app_mode == "Usuários":
+        users.show()
+
+
+def show_enhanced_dashboard():
+    """
+    Dashboard melhorado com cards de visão geral e navegação rápida
+    """
+    st.title("🏠 Dashboard - Visão Geral")
+    
+    # Cards de métricas principais
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        ComponentLibrary.metric_card(
+            title="Estações Ativas",
+            value="12",
+            delta="+2 hoje",
+            icon="🏭"
+        )
+    
+    with col2:
+        ComponentLibrary.metric_card(
+            title="Controladores Online", 
+            value="98%",
+            delta="Normal",
+            delta_color="normal",
+            icon="🎮"
+        )
+    
+    with col3:
+        ComponentLibrary.metric_card(
+            title="Consumo Hoje",
+            value="245 kWh",
+            delta="-12%",
+            delta_color="normal",
+            icon="⚡"
+        )
+    
+    with col4:
+        ComponentLibrary.metric_card(
+            title="Economia Mensal",
+            value="R$ 1.247",
+            delta="+8%",
+            delta_color="normal", 
+            icon="💰"
+        )
+    
+    st.markdown("---")
+    
+    # Seção de ações rápidas
+    st.subheader("🚀 Ações Rápidas")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        ComponentLibrary.card(
+            title="Monitoramento",
+            content="Visualizar medições em tempo real dos sensores e estações de monitoramento.",
+            icon="📊",
+            color="primary",
+            actions=[
+                {"label": "Ver Medições", "key": "goto_measurements"},
+                {"label": "Relatórios", "key": "goto_reports"}
+            ]
+        )
+    
+    with col2:
+        ComponentLibrary.card(
+            title="Controle",
+            content="Gerenciar controladores, válvulas e configurações de automação do sistema.", 
+            icon="🎮",
+            color="secondary",
+            actions=[
+                {"label": "Controladores", "key": "goto_controllers"},
+                {"label": "Válvulas", "key": "goto_valves"}
+            ]
+        )
+    
+    with col3:
+        ComponentLibrary.card(
+            title="Consumo",
+            content="Analisar consumo de energia e água com gráficos detalhados e projeções.",
+            icon="⚡",
+            color="warning",
+            actions=[
+                {"label": "Energia", "key": "goto_energy"},
+                {"label": "Água", "key": "goto_water"}
+            ]
+        )
+    
+    # Status do sistema
+    st.markdown("---")
+    st.subheader("🔧 Status do Sistema") 
+    
+    try:
+        # Usar o dashboard original como fallback
+        dashboard.show()
+    except Exception as e:
+        ComponentLibrary.alert(
+            f"Erro ao carregar dados do dashboard: {str(e)}",
+            alert_type="error"
+        )
 
 
 if __name__ == "__main__":
