@@ -5,16 +5,24 @@ from datetime import datetime
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from requests import request
 
-from api import base_url
+from api import api_request
 
 
 # Função para buscar dados de consumo de energia da API
-def fetch_energy_consumption(start_date=None, end_date=None):
-    url = f"{base_url}/api/energy-consumptions"
+def fetch_energy_consumption(
+    start_date=None, end_date=None, controller_id=None, period=None
+):
+    endpoint = "/api/consumptions/energy"
     params = {}
 
+    # Parâmetros conforme Swagger: controllerId (int64), period (string)
+    if controller_id:
+        params["controllerId"] = controller_id
+    if period:
+        params["period"] = period
+
+    # Mantém compatibilidade com parâmetros de data existentes (não estão no Swagger, mas podem ser úteis)
     if start_date:
         params["startDate"] = start_date
     if end_date:
@@ -25,11 +33,9 @@ def fetch_energy_consumption(start_date=None, end_date=None):
         st.error("Usuário não autenticado.")
         return pd.DataFrame()
 
-    headers = {"Authorization": f"Bearer {token}"}
-    try:
-        response = request("GET", url, headers=headers, params=params)
-    except Exception as e:
-        st.error(f"Erro ao conectar com a API de consumo de energia: {e}")
+    response = api_request("GET", endpoint, token=token, params=params)
+    if not response:
+        st.error("Erro ao conectar com a API de consumo de energia.")
         return pd.DataFrame()
 
     if response.status_code == 200:
@@ -37,20 +43,27 @@ def fetch_energy_consumption(start_date=None, end_date=None):
             data = response.json()
             if isinstance(data, list) and data:
                 df = pd.DataFrame(data)
-                if "date" in df.columns and "consumption" in df.columns:
+                if "date" in df.columns:
                     # Converte a data de UTC para UTC-3
-                    df["date"] = (
-                        pd.to_datetime(df["date"])
-                        .dt.tz_localize("UTC")
-                        .dt.tz_convert("America/Sao_Paulo")
-                    )
+                    df["date"] = pd.to_datetime(df["date"])
+                    if df["date"].dt.tz is None:
+                        df["date"] = df["date"].dt.tz_localize("UTC")
+                    df["date"] = df["date"].dt.tz_convert("America/Sao_Paulo")
+
+                    # Formata a data para exibição no formato brasileiro
+                    df["date_display"] = df["date"].dt.strftime("%d/%m/%Y %H:%M:%S")
+
+                    # Verifica se existe coluna de consumo para compatibilidade com UI existente
+                    if "totalCost" in df.columns and "consumption" not in df.columns:
+                        # Se não tem consumption mas tem totalCost, cria uma coluna estimada
+                        st.info(
+                            "Dados de energia recebidos com estrutura atualizada da API."
+                        )
+
                     return df
                 else:
-                    st.error(
-                        "Dados retornados não possuem as colunas 'date' e 'consumption'."
-                    )
-                    st.write("Estrutura dos dados retornados:", data)
-                    return pd.DataFrame()
+                    st.warning("Dados retornados não possuem a coluna 'date'.")
+                    return df
             else:
                 st.warning(
                     "Nenhum dado de consumo de energia disponível para os filtros selecionados."
@@ -62,6 +75,12 @@ def fetch_energy_consumption(start_date=None, end_date=None):
             )
             st.write("Conteúdo da resposta:", response.text)
             return pd.DataFrame()
+    elif response.status_code == 400:
+        st.error("Requisição inválida. Verifique filtros.")
+        return pd.DataFrame()
+    elif response.status_code == 500:
+        st.error("Erro interno ao consultar consumo de energia.")
+        return pd.DataFrame()
     else:
         st.error(
             f"Falha ao buscar dados de consumo de energia. Status Code: {response.status_code}"
@@ -72,29 +91,27 @@ def fetch_energy_consumption(start_date=None, end_date=None):
 
 # Função para buscar tarifas vigentes da API
 def fetch_current_tariffs():
-    url = f"{base_url}/api/tariff-schedules/current"
+    endpoint = "/api/tariff-schedules/current"
 
     token = st.session_state.get("token")
     if not token:
         st.error("Usuário não autenticado.")
         return {}
 
-    headers = {"Authorization": f"Bearer {token}"}
-    try:
-        response = request("GET", url, headers=headers)
-    except Exception as e:
-        st.error(f"Erro ao conectar com a API de tarifas vigentes: {e}")
+    response = api_request("GET", endpoint, token=token)
+    if not response:
+        st.error("Erro ao conectar com a API de tarifas vigentes.")
         return {}
 
     if response.status_code == 200:
         try:
             data = response.json()
-            # Verifique se os campos esperados estão presentes
-            if "diurnalRate" in data and "nightRate" in data:
+            # Campos conforme OpenAPI: daytimeTariff, nighttimeTariff, nighttimeDiscount
+            if "daytimeTariff" in data and "nighttimeTariff" in data:
                 return data
             else:
                 st.error(
-                    "Dados de tarifas retornados não possuem os campos 'diurnalRate' e 'nightRate'."
+                    "Dados de tarifas retornados não possuem os campos esperados do OpenAPI."
                 )
                 st.write("Estrutura dos dados retornados:", data)
                 return {}
@@ -102,6 +119,12 @@ def fetch_current_tariffs():
             st.error("Falha ao decodificar a resposta JSON da API de tarifas vigentes.")
             st.write("Conteúdo da resposta:", response.text)
             return {}
+    elif response.status_code == 404:
+        st.warning("Nenhuma tarifa atual encontrada.")
+        return {}
+    elif response.status_code == 500:
+        st.error("Erro interno do servidor ao buscar tarifas.")
+        return {}
     else:
         st.error(
             f"Falha ao buscar tarifas vigentes. Status Code: {response.status_code}"
@@ -110,88 +133,159 @@ def fetch_current_tariffs():
         return {}
 
 
-# Função para calcular custos com base no consumo e nas tarifas
-def calculate_costs(df_consumption, tariffs):
-    if df_consumption.empty or not tariffs:
-        st.warning("Dados insuficientes para calcular custos.")
+# Função para processar dados de consumo de energia conforme OpenAPI
+def process_energy_consumption(df_consumption, tariffs):
+    if df_consumption.empty:
+        st.warning("Nenhum dado de consumo disponível.")
         return df_consumption
 
-    # Supondo que a tarifa possui 'diurnalRate' e 'nightRate' com respectivos valores
-    diurna = tariffs.get("diurnalRate", 0)
-    noturna = tariffs.get("nightRate", 0)
+    # A API já retorna dados calculados conforme OpenAPI schema:
+    # daytimePower, daytimeCost, nighttimePower, nighttimeCost, nighttimeDiscount, totalCost
+    
+    # Se os dados já têm custos calculados, usar diretamente
+    if "totalCost" in df_consumption.columns and "daytimeCost" in df_consumption.columns:
+        # Adicionar colunas compatíveis com UI existente
+        df_consumption["custo"] = df_consumption["totalCost"]
+        
+        # Criar coluna de período baseada nos dados da API
+        df_consumption["periodo"] = df_consumption.apply(
+            lambda row: "Diurno" if row.get("daytimePower", 0) > row.get("nighttimePower", 0) else "Noturno",
+            axis=1
+        )
+        
+        # Para compatibilidade, usar totalCost como consumption se não existir
+        if "consumption" not in df_consumption.columns:
+            # Somar potências diurna e noturna para ter valor total
+            df_consumption["consumption"] = df_consumption.get("daytimePower", 0) + df_consumption.get("nighttimePower", 0)
+        
+        return df_consumption
+    
+    # Fallback: se API não retornar dados calculados, calcular manualmente (não deveria acontecer)
+    if tariffs and "daytimeTariff" in tariffs and "nighttimeTariff" in tariffs:
+        st.warning("Calculando custos localmente - API deveria retornar dados processados.")
+        
+        diurna = tariffs.get("daytimeTariff", 0)
+        noturna = tariffs.get("nighttimeTariff", 0)
 
-    # Definir horário de corte (exemplo: 18:00 para diurno/noturno)
-    corte_horario = 18
+        # Usar horários da tarifa ou padrão
+        try:
+            daytime_start = int(tariffs.get("daytimeStart", "06:00:00").split(":")[0])
+            daytime_end = int(tariffs.get("daytimeEnd", "18:00:00").split(":")[0])
+        except:
+            daytime_start, daytime_end = 6, 18
 
-    # Separar consumo diurno e noturno
-    df_consumption["periodo"] = df_consumption["date"].dt.hour.apply(
-        lambda x: "Diurno" if x >= corte_horario else "Noturno"
-    )
+        # Classificar período baseado no horário
+        df_consumption["periodo"] = df_consumption["date"].dt.hour.apply(
+            lambda x: "Diurno" if daytime_start <= x < daytime_end else "Noturno"
+        )
 
-    # Calcular custo
-    df_consumption["custo"] = df_consumption.apply(
-        lambda row: (
-            row["consumption"] * diurna
-            if row["periodo"] == "Diurno"
-            else row["consumption"] * noturna
-        ),
-        axis=1,
-    )
+        # Calcular custo manualmente
+        if "consumption" in df_consumption.columns:
+            df_consumption["custo"] = df_consumption.apply(
+                lambda row: (
+                    row["consumption"] * diurna if row["periodo"] == "Diurno"
+                    else row["consumption"] * noturna
+                ),
+                axis=1,
+            )
+        else:
+            df_consumption["custo"] = 0
 
     return df_consumption
 
 
-# Função para exibir gráficos de consumo e custos
+# Função para exibir gráficos de consumo e custos usando dados da API
 def display_graphs(df):
     if df.empty:
         st.warning("Nenhum dado disponível para exibição.")
         return
 
-    st.markdown("### Consumo de Energia Diurno vs Noturno")
-    fig1 = px.bar(
-        df.groupby("periodo")["consumption"].sum().reset_index(),
-        x="periodo",
-        y="consumption",
-        labels={"consumption": "Consumo (kWh)", "periodo": "Período"},
-        title="Consumo de Energia por Período",
-        color="periodo",
-    )
-    st.plotly_chart(fig1, use_container_width=True)
+    # Usar dados reais da API quando disponíveis
+    has_api_data = "daytimePower" in df.columns and "nighttimePower" in df.columns
+    
+    if has_api_data:
+        # Gráficos usando dados estruturados da API
+        st.markdown("### Consumo de Energia Diurno vs Noturno (Dados da API)")
+        
+        # Somar todos os registros para comparação diurno/noturno
+        total_daytime = df["daytimePower"].sum()
+        total_nighttime = df["nighttimePower"].sum()
+        
+        period_data = pd.DataFrame({
+            "periodo": ["Diurno", "Noturno"],
+            "power": [total_daytime, total_nighttime]
+        })
+        
+        fig1 = px.bar(
+            period_data,
+            x="periodo",
+            y="power",
+            labels={"power": "Potência (kW)", "periodo": "Período"},
+            title="Consumo de Energia por Período",
+            color="periodo",
+        )
+        st.plotly_chart(fig1, use_container_width=True)
+        
+        # Gráfico de custos usando dados da API
+        if "daytimeCost" in df.columns and "nighttimeCost" in df.columns:
+            total_daytime_cost = df["daytimeCost"].sum()
+            total_nighttime_cost = df["nighttimeCost"].sum()
+            
+            cost_data = pd.DataFrame({
+                "periodo": ["Diurno", "Noturno"],
+                "custo": [total_daytime_cost, total_nighttime_cost]
+            })
+            
+            st.markdown("### Custos de Energia Diurno vs Noturno")
+            fig2 = px.bar(
+                cost_data,
+                x="periodo",
+                y="custo",
+                labels={"custo": "Custo (R$)", "periodo": "Período"},
+                title="Custo de Energia por Período",
+                color="periodo",
+            )
+            st.plotly_chart(fig2, use_container_width=True)
+    
+    # Gráficos temporais (compatibilidade com implementação anterior)
+    if "consumption" in df.columns and "date_display" in df.columns:
+        st.markdown("### Consumo ao Longo do Tempo")
+        fig3 = px.line(
+            df,
+            x="date_display",
+            y="consumption",
+            color="periodo" if "periodo" in df.columns else None,
+            labels={"consumption": "Consumo (kWh)", "date_display": "Data"},
+            title="Consumo de Energia ao Longo do Tempo",
+            markers=True,
+        )
+        st.plotly_chart(fig3, use_container_width=True)
 
-    st.markdown("### Custos de Energia Diurno vs Noturno")
-    fig2 = px.bar(
-        df.groupby("periodo")["custo"].sum().reset_index(),
-        x="periodo",
-        y="custo",
-        labels={"custo": "Custo (R$)", "periodo": "Período"},
-        title="Custo de Energia por Período",
-        color="periodo",
-    )
-    st.plotly_chart(fig2, use_container_width=True)
-
-    st.markdown("### Consumo ao Longo do Tempo")
-    fig3 = px.line(
-        df,
-        x="date",
-        y="consumption",
-        color="periodo",
-        labels={"consumption": "Consumo (kWh)", "date": "Data"},
-        title="Consumo de Energia ao Longo do Tempo",
-        markers=True,
-    )
-    st.plotly_chart(fig3, use_container_width=True)
-
-    st.markdown("### Custo ao Longo do Tempo")
-    fig4 = px.line(
-        df,
-        x="date",
-        y="custo",
-        color="periodo",
-        labels={"custo": "Custo (R$)", "date": "Data"},
-        title="Custo de Energia ao Longo do Tempo",
-        markers=True,
-    )
-    st.plotly_chart(fig4, use_container_width=True)
+    if "custo" in df.columns and "date_display" in df.columns:
+        st.markdown("### Custo ao Longo do Tempo")
+        fig4 = px.line(
+            df,
+            x="date_display",
+            y="custo",
+            color="periodo" if "periodo" in df.columns else None,
+            labels={"custo": "Custo (R$)", "date_display": "Data"},
+            title="Custo de Energia ao Longo do Tempo",
+            markers=True,
+        )
+        st.plotly_chart(fig4, use_container_width=True)
+        
+    # Se tem dados da API, mostrar também gráfico de custo total
+    if "totalCost" in df.columns and "date_display" in df.columns:
+        st.markdown("### Custo Total ao Longo do Tempo (API)")
+        fig5 = px.line(
+            df,
+            x="date_display", 
+            y="totalCost",
+            labels={"totalCost": "Custo Total (R$)", "date_display": "Data"},
+            title="Custo Total de Energia (Dados da API)",
+            markers=True,
+        )
+        st.plotly_chart(fig5, use_container_width=True)
 
 
 # Função para exibir análise de custos
@@ -214,20 +308,30 @@ def display_cost_analysis(df):
     st.markdown(f"**Custo Médio por Registro:** R${avg_cost:.2f}")
 
 
-# Função para simular custos futuros
+# Função para simular custos futuros usando tarifas do OpenAPI
 def simulate_future_costs(
     tariffs, projected_consumption_diurno, projected_consumption_noturno
 ):
-    diurna = tariffs.get("diurnalRate", 0)
-    noturna = tariffs.get("nightRate", 0)
+    # Usar campos corretos do OpenAPI
+    diurna = tariffs.get("daytimeTariff", 0)
+    noturna = tariffs.get("nighttimeTariff", 0)
+    desconto = tariffs.get("nighttimeDiscount", 0)
+
+    # Aplicar desconto na tarifa noturna se especificado
+    tarifa_noturna_com_desconto = noturna * (1 - desconto / 100)
 
     custo_diurno = projected_consumption_diurno * diurna
-    custo_noturno = projected_consumption_noturno * noturna
+    custo_noturno = projected_consumption_noturno * tarifa_noturna_com_desconto
     custo_total = custo_diurno + custo_noturno
 
     st.markdown("### Simulação de Custos Futuros")
     st.markdown(f"**Consumo Projetado Diurno:** {projected_consumption_diurno} kWh")
     st.markdown(f"**Consumo Projetado Noturno:** {projected_consumption_noturno} kWh")
+    st.markdown(f"**Tarifa Diurna:** R${diurna:.4f} por kWh")
+    st.markdown(f"**Tarifa Noturna:** R${noturna:.4f} por kWh")
+    if desconto > 0:
+        st.markdown(f"**Desconto Noturno:** {desconto:.1f}%")
+        st.markdown(f"**Tarifa Noturna com Desconto:** R${tarifa_noturna_com_desconto:.4f} por kWh")
     st.markdown(f"**Custo Projetado Diurno:** R${custo_diurno:.2f}")
     st.markdown(f"**Custo Projetado Noturno:** R${custo_noturno:.2f}")
     st.markdown(f"**Custo Total Projetado:** R${custo_total:.2f}")
@@ -265,21 +369,30 @@ def show():
         if tariffs:
             st.markdown("### Tarifas Vigentes")
             st.markdown(
-                f"**Tarifa Diurna:** R${tariffs.get('diurnalRate', 0):.2f} por kWh"
+                f"**Tarifa Diurna:** R${tariffs.get('daytimeTariff', 0):.4f} por kWh"
             )
             st.markdown(
-                f"**Tarifa Noturna:** R${tariffs.get('nightRate', 0):.2f} por kWh"
+                f"**Tarifa Noturna:** R${tariffs.get('nighttimeTariff', 0):.4f} por kWh"
             )
+            if tariffs.get('nighttimeDiscount', 0) > 0:
+                st.markdown(
+                    f"**Desconto Noturno:** {tariffs.get('nighttimeDiscount', 0):.1f}%"
+                )
         else:
             st.warning("Não foi possível obter as tarifas vigentes.")
 
-        # Calcular custos
-        df_calculado = calculate_costs(df_consumption, tariffs)
+        # Processar dados de consumo
+        df_calculado = process_energy_consumption(df_consumption, tariffs)
 
         if not df_calculado.empty:
             # Exibir dados
             st.subheader("Dados de Consumo e Custo")
-            st.dataframe(df_calculado[["date", "consumption", "periodo", "custo"]])
+            # Usar a coluna formatada para exibição
+            display_columns = [
+                "date_display" if col == "date" else col
+                for col in ["date", "consumption", "periodo", "custo"]
+            ]
+            st.dataframe(df_calculado[display_columns])
 
             # Exibir gráficos
             display_graphs(df_calculado)
