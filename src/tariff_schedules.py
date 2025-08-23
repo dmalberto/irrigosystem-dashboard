@@ -7,8 +7,12 @@ from api import api_request
 
 
 def rename_tariff_columns(df: pd.DataFrame):
-    """Renomeia colunas para português."""
+    """Renomeia colunas para português e formata datas."""
     if not df.empty:
+        # Formatar datas para o padrão brasileiro
+        if "date" in df.columns:
+            df["date"] = pd.to_datetime(df["date"]).dt.strftime("%d/%m/%Y")
+
         columns_mapping = {
             "id": "ID",
             "date": "Data",
@@ -24,45 +28,92 @@ def rename_tariff_columns(df: pd.DataFrame):
 
 
 def get_all_tariffs(token):
-    """GET /api/tariff-schedules"""
+    """GET /api/tariff-schedules
+    
+    Conforme OpenAPI, retorna TariffSchedule singular (não array).
+    Normaliza para array para compatibilidade com UI existente.
+    """
     endpoint = "/api/tariff-schedules"
     response = api_request("GET", endpoint, token=token)
     if not response:
         return []
     if response.status_code == 200:
-        data = response.json()
-        return data if isinstance(data, list) else []
+        try:
+            data = response.json()
+            # OpenAPI define retorno como TariffSchedule singular
+            if isinstance(data, dict) and data:
+                # Se é um objeto válido, encapsula em array
+                return [data]
+            elif isinstance(data, list):
+                # Caso API retorne array (diverge do Swagger)
+                return data
+            else:
+                return []
+        except ValueError:
+            st.error("Erro ao processar resposta JSON das tarifas.")
+            return []
+    elif response.status_code == 500:
+        st.error("Erro interno do servidor ao buscar tarifas.")
+        return []
     else:
-        st.error("Falha ao obter as tarifas.")
+        st.error(f"Falha ao obter as tarifas. Status: {response.status_code}")
         return []
 
 
 def get_current_tariff(token):
-    """GET /api/tariff-schedules/current"""
+    """GET /api/tariff-schedules/current
+    
+    Retorna objeto TariffSchedule ou erro conforme OpenAPI.
+    """
     endpoint = "/api/tariff-schedules/current"
     response = api_request("GET", endpoint, token=token)
-    if response and response.status_code == 200:
-        return response.json()
+    
+    if not response:
+        return {}
+    
+    if response.status_code == 200:
+        try:
+            return response.json()
+        except ValueError:
+            st.error("Erro ao processar resposta JSON da tarifa atual.")
+            return {}
+    elif response.status_code == 404:
+        st.info("Nenhuma tarifa atual encontrada.")
+        return {}
+    elif response.status_code == 500:
+        st.error("Erro interno do servidor ao buscar tarifa atual.")
+        return {}
     else:
+        st.error(f"Falha ao obter tarifa atual. Status: {response.status_code}")
         return {}
 
 
 def create_tariff(token, data):
-    """POST /api/tariff-schedules"""
+    """POST /api/tariff-schedules
+    
+    Retorna TariffSchedule criado ou ErrorResponse conforme OpenAPI.
+    """
     endpoint = "/api/tariff-schedules"
     resp = api_request("POST", endpoint, token=token, json=data)
     return resp
 
 
 def update_tariff(token, tariff_id, data):
-    """PUT /api/tariff-schedules/{tariff_id}"""
+    """PUT /api/tariff-schedules/{id}
+    
+    Retorna TariffSchedule atualizado ou ErrorResponse conforme OpenAPI.
+    """
     endpoint = f"/api/tariff-schedules/{tariff_id}"
     resp = api_request("PUT", endpoint, token=token, json=data)
     return resp
 
 
 def delete_tariff(token, tariff_id):
-    """DELETE /api/tariff-schedules/{tariff_id}"""
+    """DELETE /api/tariff-schedules/{id}
+    
+    Conforme OpenAPI, não retorna corpo na resposta de sucesso (204).
+    Possíveis códigos: 404 (Not Found), 500 (Server Error).
+    """
     endpoint = f"/api/tariff-schedules/{tariff_id}"
     resp = api_request("DELETE", endpoint, token=token)
     return resp
@@ -147,6 +198,12 @@ def show_create_tariff(token):
             if resp and resp.status_code == 200:
                 st.success("Tarifa criada com sucesso!")
                 st.rerun()
+            elif resp and resp.status_code == 400:
+                st.error("Dados inválidos. Verifique os campos obrigatórios.")
+            elif resp and resp.status_code == 409:
+                st.error("Conflito: tarifa já existe para esta data.")
+            elif resp and resp.status_code == 500:
+                st.error("Erro interno do servidor ao criar tarifa.")
             else:
                 st.error("Falha ao criar tarifa.")
 
@@ -170,7 +227,14 @@ def show_edit_tariff(token):
         return
 
     with st.form("EditarTarifa"):
-        date_val = st.text_input("Data", value=tariff_obj["date"])
+        # Formatar data para exibição no formato brasileiro
+        try:
+            formatted_date = pd.to_datetime(tariff_obj["date"]).strftime(
+                "%d/%m/%Y %H:%M:%S"
+            )
+        except:
+            formatted_date = tariff_obj["date"]
+        date_val = st.text_input("Data", value=formatted_date)
         daytime_start = st.text_input(
             "Início (Diurno)", value=tariff_obj["daytimeStart"]
         )
@@ -211,6 +275,14 @@ def show_edit_tariff(token):
             if resp and resp.status_code == 200:
                 st.success("Tarifa atualizada com sucesso!")
                 st.rerun()
+            elif resp and resp.status_code == 400:
+                st.error("Dados inválidos. Verifique os campos obrigatórios.")
+            elif resp and resp.status_code == 404:
+                st.error("Tarifa não encontrada.")
+            elif resp and resp.status_code == 409:
+                st.error("Conflito: tarifa já existe para esta data.")
+            elif resp and resp.status_code == 500:
+                st.error("Erro interno do servidor ao atualizar tarifa.")
             else:
                 st.error("Falha ao atualizar tarifa.")
 
@@ -229,9 +301,15 @@ def show_delete_tariff(token):
 
     if st.button("Confirmar Exclusão"):
         resp = delete_tariff(token, selected_id)
-        if resp and resp.status_code == 200:
+        # OpenAPI define DELETE sem retorno de corpo (status 204)
+        # Mas algumas implementações podem retornar 200
+        if resp and resp.status_code in [200, 204]:
             st.success("Tarifa excluída com sucesso!")
             st.rerun()
+        elif resp and resp.status_code == 404:
+            st.error("Tarifa não encontrada para exclusão.")
+        elif resp and resp.status_code == 500:
+            st.error("Erro interno do servidor ao excluir tarifa.")
         else:
             st.error("Falha ao excluir tarifa.")
 
