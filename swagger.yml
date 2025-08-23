@@ -1,1275 +1,2187 @@
 openapi: 3.0.1
 info:
-    title: IrrigoSystem.Server
-    version: "1.0"
+  title: IrrigoSystem.Server
+  version: '1.0'
 paths:
-    /api/controllers:
-        post:
-            tags:
-                - Controllers
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/Controller"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/Controller"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/Controller"
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/Controller"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Controller"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/Controller"
-        get:
-            tags:
-                - Controllers
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/Controller"
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/Controller"
-                        text/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/Controller"
-    /api/controllers/{id}:
-        put:
-            tags:
-                - Controllers
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/Controller"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/Controller"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/Controller"
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/Controller"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Controller"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/Controller"
-        delete:
-            tags:
-                - Controllers
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-            responses:
-                "200":
-                    description: Success
-    /api/controllers/{controllerId}/valves:
-        post:
-            tags:
-                - Controllers
-            parameters:
-                - name: controllerId
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/Valve"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/Valve"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/Valve"
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/Valve"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Valve"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/Valve"
-        get:
-            tags:
-                - Controllers
-            parameters:
-                - name: controllerId
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/Valve"
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/Valve"
-                        text/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/Valve"
-    /api/controllers/{controllerId}/valves/{id}:
-        put:
-            tags:
-                - Controllers
-            parameters:
-                - name: controllerId
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int32
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/Valve"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/Valve"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/Valve"
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/Valve"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Valve"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/Valve"
-        delete:
-            tags:
-                - Controllers
-            parameters:
-                - name: controllerId
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int32
-            responses:
-                "200":
-                    description: Success
-    /api/controllers/{controllerId}/statuses:
-        get:
-            tags:
-                - Controllers
-            parameters:
-                - name: controllerId
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-                - name: startDate
-                  in: query
-                  schema:
-                      type: string
-                      format: date-time
-                - name: endDate
-                  in: query
-                  schema:
-                      type: string
-                      format: date-time
-                - name: page
-                  in: query
-                  schema:
-                      type: integer
-                      format: int32
-                      default: 1
-                - name: pageSize
-                  in: query
-                  schema:
-                      type: integer
-                      format: int32
-                      default: 15
-                - name: sort
-                  in: query
-                  schema:
-                      type: string
-                      default: desc
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/ControllerStatus"
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/ControllerStatus"
-                        text/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/ControllerStatus"
-    /api/controllers/{controllerId}/activations:
-        get:
-            tags:
-                - Controllers
-            parameters:
-                - name: controllerId
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-                - name: period
-                  in: query
-                  schema:
-                      type: string
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/PumpStatus"
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/PumpStatus"
-                        text/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/PumpStatus"
-    /api/energy-consumptions:
-        get:
-            tags:
-                - EnergyConsumption
-            parameters:
-                - name: controllerId
-                  in: query
-                  schema:
-                      type: integer
-                      format: int64
-                - name: period
-                  in: query
-                  schema:
-                      type: string
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/EnergyConsumption"
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/EnergyConsumption"
-                        text/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/EnergyConsumption"
-    /api/health:
-        get:
-            tags:
-                - HealthCheck
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/HealthCheck"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/HealthCheck"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/HealthCheck"
-    /api/measurements:
-        get:
-            tags:
-                - Measurements
-            parameters:
-                - name: startDate
-                  in: query
-                  schema:
-                      type: string
-                      format: date-time
-                - name: endDate
-                  in: query
-                  schema:
-                      type: string
-                      format: date-time
-                - name: stationId
-                  in: query
-                  schema:
-                      type: integer
-                      format: int32
-                - name: sensorId
-                  in: query
-                  schema:
-                      type: integer
-                      format: int32
-                - name: page
-                  in: query
-                  schema:
-                      type: integer
-                      format: int32
-                      default: 1
-                - name: pageSize
-                  in: query
-                  schema:
-                      type: integer
-                      format: int32
-                      default: 15
-                - name: sort
-                  in: query
-                  schema:
-                      type: string
-                      default: desc
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/Measurement"
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/Measurement"
-                        text/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/Measurement"
-    /api/measurements/current-average:
-        post:
-            tags:
-                - Measurements
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/MeasurementReportFilter"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/MeasurementReportFilter"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/MeasurementReportFilter"
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/MeasurementAverage"
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/MeasurementAverage"
-                        text/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/MeasurementAverage"
-    /api/measurements/report:
-        post:
-            tags:
-                - Measurements
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/MeasurementReportFilter"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/MeasurementReportFilter"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/MeasurementReportFilter"
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/MeasurementAverage"
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/MeasurementAverage"
-                        text/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/MeasurementAverage"
-    /api/monitoring-stations:
-        post:
-            tags:
-                - MonitoringStations
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/MonitoringStation"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/MonitoringStation"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/MonitoringStation"
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/MonitoringStation"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/MonitoringStation"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/MonitoringStation"
-        get:
-            tags:
-                - MonitoringStations
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/MonitoringStation"
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/MonitoringStation"
-                        text/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/MonitoringStation"
-    /api/monitoring-stations/{id}:
-        put:
-            tags:
-                - MonitoringStations
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/MonitoringStation"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/MonitoringStation"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/MonitoringStation"
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/MonitoringStation"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/MonitoringStation"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/MonitoringStation"
-        delete:
-            tags:
-                - MonitoringStations
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-            responses:
-                "200":
-                    description: Success
-    /api/monitoring-stations/{stationId}/sensors:
-        post:
-            tags:
-                - MonitoringStations
-            parameters:
-                - name: stationId
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/Sensor"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/Sensor"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/Sensor"
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/Sensor"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Sensor"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/Sensor"
-        get:
-            tags:
-                - MonitoringStations
-            parameters:
-                - name: stationId
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/Sensor"
-                        application/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/Sensor"
-                        text/json:
-                            schema:
-                                type: array
-                                items:
-                                    $ref: "#/components/schemas/Sensor"
-    /api/monitoring-stations/{stationId}/sensors/{id}:
-        put:
-            tags:
-                - MonitoringStations
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int32
-                - name: stationId
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/Sensor"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/Sensor"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/Sensor"
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/Sensor"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/Sensor"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/Sensor"
-        delete:
-            tags:
-                - MonitoringStations
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int32
-                - name: stationId
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int64
-            responses:
-                "200":
-                    description: Success
-    /api/tariff-schedules:
-        get:
-            tags:
-                - TariffSchedules
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/TariffSchedule"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/TariffSchedule"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/TariffSchedule"
-        post:
-            tags:
-                - TariffSchedules
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/TariffSchedule"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/TariffSchedule"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/TariffSchedule"
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/TariffSchedule"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/TariffSchedule"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/TariffSchedule"
-    /api/tariff-schedules/current:
-        get:
-            tags:
-                - TariffSchedules
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/TariffSchedule"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/TariffSchedule"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/TariffSchedule"
-    /api/tariff-schedules/{id}:
-        put:
-            tags:
-                - TariffSchedules
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int32
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/TariffSchedule"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/TariffSchedule"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/TariffSchedule"
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/TariffSchedule"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/TariffSchedule"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/TariffSchedule"
-        delete:
-            tags:
-                - TariffSchedules
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                      type: integer
-                      format: int32
-            responses:
-                "200":
-                    description: Success
-    /api/users/create:
-        post:
-            tags:
-                - Users
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/UserRegistrationRequest"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/UserRegistrationRequest"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/UserRegistrationRequest"
-            responses:
-                "200":
-                    description: Success
-    /api/users/{email}:
-        delete:
-            tags:
-                - Users
-            parameters:
-                - name: email
-                  in: path
-                  required: true
-                  schema:
-                      type: string
-            responses:
-                "200":
-                    description: Success
-    /api/users/login:
-        post:
-            tags:
-                - Users
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: "#/components/schemas/UserLoginRequest"
-                    text/json:
-                        schema:
-                            $ref: "#/components/schemas/UserLoginRequest"
-                    application/*+json:
-                        schema:
-                            $ref: "#/components/schemas/UserLoginRequest"
-            responses:
-                "200":
-                    description: Success
-                    content:
-                        text/plain:
-                            schema:
-                                $ref: "#/components/schemas/UserLoginResponse"
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/UserLoginResponse"
-                        text/json:
-                            schema:
-                                $ref: "#/components/schemas/UserLoginResponse"
+  /api/consumptions/energy:
+    get:
+      tags:
+        - Consumptions
+      parameters:
+        - name: controllerId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: period
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EnergyConsumption'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EnergyConsumption'
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EnergyConsumption'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/consumptions/water:
+    get:
+      tags:
+        - Consumptions
+      parameters:
+        - name: controllerId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: period
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WaterConsumption'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WaterConsumption'
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WaterConsumption'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/controllers:
+    post:
+      tags:
+        - Controllers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Controller'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/Controller'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/Controller'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Controller'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Controller'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/Controller'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Controllers
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Controller'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Controller'
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Controller'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/controllers/{id}:
+    put:
+      tags:
+        - Controllers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Controller'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/Controller'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/Controller'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Controller'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Controller'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/Controller'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Controllers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/controllers/{controllerId}/valves:
+    post:
+      tags:
+        - Controllers
+      parameters:
+        - name: controllerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Valve'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/Valve'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/Valve'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Valve'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Valve'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/Valve'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Controllers
+      parameters:
+        - name: controllerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Valve'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Valve'
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Valve'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/controllers/{controllerId}/valves/{id}:
+    put:
+      tags:
+        - Controllers
+      parameters:
+        - name: controllerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Valve'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/Valve'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/Valve'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Valve'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Valve'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/Valve'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Controllers
+      parameters:
+        - name: controllerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/controllers/{controllerId}/statuses:
+    get:
+      tags:
+        - Controllers
+      parameters:
+        - name: controllerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 15
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: desc
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ControllerStatus'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ControllerStatus'
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ControllerStatus'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/controllers/{controllerId}/activations:
+    get:
+      tags:
+        - Controllers
+      parameters:
+        - name: controllerId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: period
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PumpStatus'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PumpStatus'
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PumpStatus'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/health:
+    get:
+      tags:
+        - HealthCheck
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+  /api/home:
+    get:
+      tags:
+        - Home
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/HomeResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HomeResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/HomeResponse'
+  /api/measurements:
+    get:
+      tags:
+        - Measurements
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: stationId
+          in: query
+          schema:
+            type: integer
+            format: int32
+        - name: sensorId
+          in: query
+          schema:
+            type: integer
+            format: int32
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 15
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: desc
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Measurement'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Measurement'
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Measurement'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/measurements/export:
+    get:
+      tags:
+        - Measurements
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: stationId
+          in: query
+          schema:
+            type: integer
+            format: int32
+        - name: sensorId
+          in: query
+          schema:
+            type: integer
+            format: int32
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: desc
+      responses:
+        '200':
+          description: Success
+        '500':
+          description: Server Error
+          content:
+            text/csv:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/measurements/current-average:
+    post:
+      tags:
+        - Measurements
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasurementReportFilter'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/MeasurementReportFilter'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/MeasurementReportFilter'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeasurementAverage'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeasurementAverage'
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeasurementAverage'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/measurements/report:
+    post:
+      tags:
+        - Measurements
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasurementReportFilter'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/MeasurementReportFilter'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/MeasurementReportFilter'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeasurementAverage'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeasurementAverage'
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeasurementAverage'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/monitoring-stations:
+    post:
+      tags:
+        - MonitoringStations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MonitoringStation'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/MonitoringStation'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/MonitoringStation'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/MonitoringStation'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitoringStation'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/MonitoringStation'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - MonitoringStations
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MonitoringStation'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MonitoringStation'
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MonitoringStation'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/monitoring-stations/{id}:
+    put:
+      tags:
+        - MonitoringStations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MonitoringStation'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/MonitoringStation'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/MonitoringStation'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/MonitoringStation'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitoringStation'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/MonitoringStation'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - MonitoringStations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/monitoring-stations/{stationId}/sensors:
+    post:
+      tags:
+        - MonitoringStations
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sensor'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/Sensor'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/Sensor'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Sensor'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sensor'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/Sensor'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - MonitoringStations
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Sensor'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Sensor'
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Sensor'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/monitoring-stations/{stationId}/sensors/{id}:
+    put:
+      tags:
+        - MonitoringStations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sensor'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/Sensor'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/Sensor'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Sensor'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sensor'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/Sensor'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - MonitoringStations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/tariff-schedules:
+    get:
+      tags:
+        - TariffSchedules
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/TariffSchedule'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TariffSchedule'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/TariffSchedule'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - TariffSchedules
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TariffSchedule'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/TariffSchedule'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/TariffSchedule'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/TariffSchedule'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TariffSchedule'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/TariffSchedule'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/tariff-schedules/current:
+    get:
+      tags:
+        - TariffSchedules
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/TariffSchedule'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TariffSchedule'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/TariffSchedule'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/tariff-schedules/{id}:
+    put:
+      tags:
+        - TariffSchedules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TariffSchedule'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/TariffSchedule'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/TariffSchedule'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/TariffSchedule'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TariffSchedule'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/TariffSchedule'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - TariffSchedules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/users/create:
+    post:
+      tags:
+        - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationRequest'
+      responses:
+        '200':
+          description: Success
+  /api/users/{email}:
+    delete:
+      tags:
+        - Users
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+  /api/users/login:
+    post:
+      tags:
+        - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLoginRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/UserLoginRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/UserLoginRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/UserLoginResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLoginResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/UserLoginResponse'
 components:
-    schemas:
-        Controller:
-            required:
-                - efficiency
-                - powerFactor
-                - pumpPower
-            type: object
-            properties:
-                id:
-                    type: integer
-                    format: int64
-                pumpPower:
-                    type: number
-                    format: double
-                efficiency:
-                    type: number
-                    format: double
-                powerFactor:
-                    type: number
-                    format: double
-            additionalProperties: false
-        ControllerStatus:
-            type: object
-            properties:
-                id:
-                    type: integer
-                    format: int64
-                date:
-                    type: string
-                    format: date-time
-                pumpId:
-                    type: integer
-                    format: int32
-                operationMode:
-                    type: string
-                    nullable: true
-                valve1:
-                    $ref: "#/components/schemas/ValveStatus"
-                valve2:
-                    $ref: "#/components/schemas/ValveStatus"
-                valve3:
-                    $ref: "#/components/schemas/ValveStatus"
-                valve4:
-                    $ref: "#/components/schemas/ValveStatus"
-                valve5:
-                    $ref: "#/components/schemas/ValveStatus"
-                lowerMoistureLimit:
-                    type: number
-                    format: double
-                upperMoistureLimit:
-                    type: number
-                    format: double
-                startTime1:
-                    type: string
-                    nullable: true
-                startTime2:
-                    type: string
-                    nullable: true
-                inactivityStartTime:
-                    type: string
-                    nullable: true
-                inactivityEndTime:
-                    type: string
-                    nullable: true
-                controllerId:
-                    type: integer
-                    format: int32
-                weekDayStatus:
-                    type: integer
-                    format: int32
-                profile:
-                    type: integer
-                    format: int32
-                profileOrder:
-                    type: integer
-                    format: int32
-            additionalProperties: false
-        DeviceStatus:
-            type: object
-            properties:
-                id:
-                    type: integer
-                    format: int64
-                status:
-                    type: boolean
-            additionalProperties: false
-        EnergyConsumption:
-            type: object
-            properties:
-                date:
-                    type: string
-                    nullable: true
-                daytimePower:
-                    type: number
-                    format: double
-                daytimeCost:
-                    type: number
-                    format: double
-                nighttimePower:
-                    type: number
-                    format: double
-                nighttimeCost:
-                    type: number
-                    format: double
-                nighttimeDiscount:
-                    type: number
-                    format: double
-                totalCost:
-                    type: number
-                    format: double
-            additionalProperties: false
-        HealthCheck:
-            type: object
-            properties:
-                monitoringStations:
-                    type: array
-                    items:
-                        $ref: "#/components/schemas/MonitoringStationStatus"
-                    nullable: true
-                controllers:
-                    type: array
-                    items:
-                        $ref: "#/components/schemas/DeviceStatus"
-                    nullable: true
-                broker:
-                    type: boolean
-            additionalProperties: false
-        Measurement:
-            type: object
-            properties:
-                id:
-                    type: integer
-                    format: int64
-                date:
-                    type: string
-                    format: date-time
-                sensorId:
-                    type: integer
-                    format: int32
-                batteryVoltage:
-                    type: number
-                    format: double
-                boardTemperature:
-                    type: number
-                    format: double
-                sensorTemperature:
-                    type: number
-                    format: double
-                sampleTemperature:
-                    type: number
-                    format: double
-                moisture:
-                    type: number
-                    format: double
-                salinity:
-                    type: number
-                    format: double
-                conductivity:
-                    type: number
-                    format: double
-                    nullable: true
-            additionalProperties: false
-        MeasurementAverage:
-            type: object
-            properties:
-                date:
-                    type: string
-                    nullable: true
-                averageValue:
-                    type: number
-                    format: double
-            additionalProperties: false
-        MeasurementReportFilter:
-            type: object
-            properties:
-                stationId:
-                    type: integer
-                    format: int64
-                sensorIds:
-                    type: array
-                    items:
-                        type: integer
-                        format: int64
-                    nullable: true
-                variable:
-                    type: string
-                    nullable: true
-                period:
-                    type: string
-                    nullable: true
-            additionalProperties: false
-        MonitoringStation:
-            required:
-                - latitude
-                - longitude
-                - moistureLowerLimit
-                - moistureUpperLimit
-                - name
-            type: object
-            properties:
-                id:
-                    type: integer
-                    format: int64
-                    nullable: true
-                name:
-                    minLength: 1
-                    type: string
-                moistureUpperLimit:
-                    type: number
-                    format: double
-                moistureLowerLimit:
-                    type: number
-                    format: double
-                latitude:
-                    type: number
-                    format: double
-                longitude:
-                    type: number
-                    format: double
-                controllerId:
-                    type: integer
-                    format: int64
-                    nullable: true
-            additionalProperties: false
-        MonitoringStationStatus:
-            type: object
-            properties:
-                name:
-                    type: string
-                    nullable: true
-                sensors:
-                    type: array
-                    items:
-                        $ref: "#/components/schemas/DeviceStatus"
-                    nullable: true
-            additionalProperties: false
-        PumpStatus:
-            type: object
-            properties:
-                status:
-                    type: integer
-                    format: int32
-                startDate:
-                    type: string
-                    format: date-time
-                endDate:
-                    type: string
-                    format: date-time
-                duration:
-                    type: number
-                    format: double
-            additionalProperties: false
-        Sensor:
-            required:
-                - id
-                - monitoringStationId
-            type: object
-            properties:
-                id:
-                    type: integer
-                    format: int32
-                monitoringStationId:
-                    type: integer
-                    format: int64
-            additionalProperties: false
-        TariffSchedule:
-            required:
-                - date
-                - daytimeEnd
-                - daytimeStart
-                - daytimeTariff
-                - nighttimeDiscount
-                - nighttimeEnd
-                - nighttimeStart
-                - nighttimeTariff
-            type: object
-            properties:
-                id:
-                    type: integer
-                    format: int32
-                date:
-                    type: string
-                    format: date-time
-                daytimeStart:
-                    minLength: 1
-                    type: string
-                daytimeEnd:
-                    minLength: 1
-                    type: string
-                nighttimeStart:
-                    minLength: 1
-                    type: string
-                nighttimeEnd:
-                    minLength: 1
-                    type: string
-                daytimeTariff:
-                    type: number
-                    format: double
-                nighttimeTariff:
-                    type: number
-                    format: double
-                nighttimeDiscount:
-                    type: number
-                    format: double
-            additionalProperties: false
-        UserLoginRequest:
-            required:
-                - email
-                - password
-            type: object
-            properties:
-                email:
-                    minLength: 1
-                    type: string
-                    format: email
-                password:
-                    minLength: 1
-                    type: string
-            additionalProperties: false
-        UserLoginResponse:
-            type: object
-            properties:
-                token:
-                    type: string
-                    nullable: true
-                expiration:
-                    type: string
-                    format: date-time
-            additionalProperties: false
-        UserRegistrationRequest:
-            required:
-                - email
-                - password
-                - passwordConfirmation
-                - role
-            type: object
-            properties:
-                email:
-                    minLength: 1
-                    type: string
-                    format: email
-                password:
-                    minLength: 1
-                    type: string
-                passwordConfirmation:
-                    minLength: 1
-                    type: string
-                role:
-                    minLength: 1
-                    type: string
-            additionalProperties: false
-        Valve:
-            required:
-                - controllerId
-                - flowRate
-            type: object
-            properties:
-                id:
-                    type: integer
-                    format: int32
-                controllerId:
-                    type: integer
-                    format: int64
-                flowRate:
-                    type: number
-                    format: double
-            additionalProperties: false
-        ValveStatus:
-            type: object
-            properties:
-                status:
-                    type: boolean
-                remainingTime:
-                    type: string
-                    nullable: true
-            additionalProperties: false
-    securitySchemes:
-        Bearer:
-            type: apiKey
-            description: |-
-                JWT Authorization header using the Bearer scheme. 
-                                        Enter 'Bearer' [space] and then your token in the text input below.
-                                        Example: 'Bearer 12345abcdef'
-            name: Authorization
-            in: header
+  schemas:
+    Controller:
+      required:
+        - efficiency
+        - id
+        - latitude
+        - longitude
+        - name
+        - powerFactor
+        - pumpPower
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          minLength: 1
+          type: string
+        pumpPower:
+          type: number
+          format: double
+        efficiency:
+          type: number
+          format: double
+        powerFactor:
+          type: number
+          format: double
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+      additionalProperties: false
+    ControllerSnapshot:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+          nullable: true
+        status:
+          type: boolean
+        numberOfValvesOn:
+          type: integer
+          format: int32
+      additionalProperties: false
+    ControllerStatus:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        date:
+          type: string
+          format: date-time
+        pumpId:
+          type: integer
+          format: int32
+        operationMode:
+          type: string
+          nullable: true
+        valve1:
+          $ref: '#/components/schemas/ValveStatus'
+        valve2:
+          $ref: '#/components/schemas/ValveStatus'
+        valve3:
+          $ref: '#/components/schemas/ValveStatus'
+        valve4:
+          $ref: '#/components/schemas/ValveStatus'
+        valve5:
+          $ref: '#/components/schemas/ValveStatus'
+        lowerMoistureLimit:
+          type: number
+          format: double
+        upperMoistureLimit:
+          type: number
+          format: double
+        startTime1:
+          type: string
+          nullable: true
+        startTime2:
+          type: string
+          nullable: true
+        inactivityStartTime:
+          type: string
+          nullable: true
+        inactivityEndTime:
+          type: string
+          nullable: true
+        controllerId:
+          type: integer
+          format: int32
+        weekDayStatus:
+          type: integer
+          format: int32
+        profile:
+          type: integer
+          format: int32
+        profileOrder:
+          type: integer
+          format: int32
+      additionalProperties: false
+    DeviceHealth:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+          nullable: true
+        status:
+          type: boolean
+      additionalProperties: false
+    EnergyConsumption:
+      type: object
+      properties:
+        date:
+          type: string
+          nullable: true
+        daytimePower:
+          type: number
+          format: double
+        daytimeCost:
+          type: number
+          format: double
+        nighttimePower:
+          type: number
+          format: double
+        nighttimeCost:
+          type: number
+          format: double
+        nighttimeDiscount:
+          type: number
+          format: double
+        totalCost:
+          type: number
+          format: double
+      additionalProperties: false
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          nullable: true
+        details:
+          type: string
+          nullable: true
+      additionalProperties: false
+    HealthCheck:
+      type: object
+      properties:
+        monitoringStations:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonitoringStationHealth'
+          nullable: true
+        controllers:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceHealth'
+          nullable: true
+        broker:
+          type: boolean
+      additionalProperties: false
+    HomeResponse:
+      type: object
+      properties:
+        monitoringStations:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonitoringStationSnapshot'
+          nullable: true
+        controllers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ControllerSnapshot'
+          nullable: true
+        gateway:
+          type: boolean
+      additionalProperties: false
+    Measurement:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        date:
+          type: string
+          format: date-time
+        stationId:
+          type: integer
+          format: int32
+        sensorId:
+          type: integer
+          format: int32
+        batteryVoltage:
+          type: number
+          format: double
+        boardTemperature:
+          type: number
+          format: double
+        sensorTemperature:
+          type: number
+          format: double
+        sampleTemperature:
+          type: number
+          format: double
+        moisture:
+          type: number
+          format: double
+        salinity:
+          type: number
+          format: double
+        conductivity:
+          type: number
+          format: double
+          nullable: true
+      additionalProperties: false
+    MeasurementAverage:
+      type: object
+      properties:
+        date:
+          type: string
+          nullable: true
+        averageValue:
+          type: number
+          format: double
+      additionalProperties: false
+    MeasurementReportFilter:
+      type: object
+      properties:
+        stationId:
+          type: integer
+          format: int64
+        sensorIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+          nullable: true
+        variable:
+          type: string
+          nullable: true
+        period:
+          type: string
+          nullable: true
+      additionalProperties: false
+    MonitoringStation:
+      required:
+        - id
+        - latitude
+        - longitude
+        - moistureLowerLimit
+        - moistureUpperLimit
+        - name
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          minLength: 1
+          type: string
+        moistureUpperLimit:
+          type: number
+          format: double
+        moistureLowerLimit:
+          type: number
+          format: double
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        controllerId:
+          type: integer
+          format: int64
+          nullable: true
+      additionalProperties: false
+    MonitoringStationHealth:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+          nullable: true
+        status:
+          type: boolean
+        sensors:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceHealth'
+          nullable: true
+      additionalProperties: false
+    MonitoringStationSnapshot:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+          nullable: true
+        status:
+          type: boolean
+        averageMoisture:
+          type: number
+          format: double
+        moistureLimit:
+          type: string
+          nullable: true
+      additionalProperties: false
+    PumpStatus:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        duration:
+          type: number
+          format: double
+      additionalProperties: false
+    Sensor:
+      required:
+        - id
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        monitoringStationId:
+          type: integer
+          format: int64
+      additionalProperties: false
+    TariffSchedule:
+      required:
+        - date
+        - daytimeEnd
+        - daytimeStart
+        - daytimeTariff
+        - nighttimeDiscount
+        - nighttimeEnd
+        - nighttimeStart
+        - nighttimeTariff
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        date:
+          type: string
+          format: date-time
+        daytimeStart:
+          minLength: 1
+          type: string
+        daytimeEnd:
+          minLength: 1
+          type: string
+        nighttimeStart:
+          minLength: 1
+          type: string
+        nighttimeEnd:
+          minLength: 1
+          type: string
+        daytimeTariff:
+          type: number
+          format: double
+        nighttimeTariff:
+          type: number
+          format: double
+        nighttimeDiscount:
+          type: number
+          format: double
+      additionalProperties: false
+    UserLoginRequest:
+      required:
+        - email
+        - password
+      type: object
+      properties:
+        email:
+          minLength: 1
+          type: string
+          format: email
+        password:
+          minLength: 1
+          type: string
+      additionalProperties: false
+    UserLoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          nullable: true
+        expiration:
+          type: string
+          format: date-time
+      additionalProperties: false
+    UserRegistrationRequest:
+      required:
+        - email
+        - password
+        - passwordConfirmation
+        - role
+      type: object
+      properties:
+        email:
+          minLength: 1
+          type: string
+          format: email
+        password:
+          minLength: 1
+          type: string
+        passwordConfirmation:
+          minLength: 1
+          type: string
+        role:
+          minLength: 1
+          type: string
+      additionalProperties: false
+    Valve:
+      required:
+        - flowRate
+        - id
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        controllerId:
+          type: integer
+          format: int64
+          nullable: true
+        flowRate:
+          type: number
+          format: double
+      additionalProperties: false
+    ValveStatus:
+      type: object
+      properties:
+        status:
+          type: boolean
+        remainingTime:
+          type: string
+          nullable: true
+      additionalProperties: false
+    WaterConsumption:
+      type: object
+      properties:
+        date:
+          type: string
+          nullable: true
+        consumption:
+          type: number
+          format: double
+      additionalProperties: false
+  securitySchemes:
+    Bearer:
+      type: apiKey
+      description: |-
+        JWT Authorization header using the Bearer scheme. 
+                                Enter 'Bearer' [space] and then your token in the text input below.
+                                Example: 'Bearer 12345abcdef'
+      name: Authorization
+      in: header
 security:
-    - Bearer: []
+  - Bearer: []
