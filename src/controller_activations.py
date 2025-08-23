@@ -4,6 +4,8 @@ import pandas as pd
 import streamlit as st
 
 from api import api_request
+from src.ui_components import (controller_selector, format_datetime_for_api,
+                               show_loading_state)
 
 
 def format_datetime(date_value, time_value):
@@ -83,7 +85,7 @@ def load_more_statuses():
 
 
 def show():
-    st.title("Ativações (Statuses do Controlador)")
+    st.title("Ativações de Bomba")
 
     token = st.session_state.get("token", None)
     if not token:
@@ -112,20 +114,13 @@ def show():
         st.session_state.act_end_date_str = None
 
     # -----------------------------------------------------------------
-    # Obtem lista de controladores p/ selectbox
+    # Seletor padronizado de controlador
     # -----------------------------------------------------------------
-    controllers = fetch_controllers(token)
-    if not controllers:
-        st.warning("Nenhum controlador cadastrado ou falha ao obter lista.")
-        return
-
-    controllers_dict = {
-        f"Controlador #{c['id']}": c["id"] for c in controllers if "id" in c
-    }
-    selected_label = st.selectbox(
-        "Selecione o Controlador", list(controllers_dict.keys())
+    controller_id, controller_name = controller_selector(
+        token, "Selecione o Controlador *"
     )
-    controller_id = controllers_dict[selected_label]
+    if not controller_id:
+        return
 
     # Se o controlador mudou, resetar paginação/dados
     if controller_id != st.session_state.act_previous_controller_id:
@@ -135,17 +130,22 @@ def show():
         st.session_state.act_previous_controller_id = controller_id
 
     # -----------------------------------------------------------------
-    # Filtros de data
-    # Vamos usar o mesmo padrão: fim = hoje, início = hoje-30 dias
+    # Filtros de data padronizados - máximo 90 dias
     # -----------------------------------------------------------------
     end_date_default = date.today()
-    start_date_default = end_date_default - timedelta(days=30)
+    start_date_default = end_date_default - timedelta(days=7)  # Default 7 dias
 
     col1, col2 = st.columns(2)
     with col1:
-        start_date = st.date_input("Data de Início", value=start_date_default)
+        start_date = st.date_input(
+            "Data de Início *",
+            value=start_date_default,
+            help="Data inicial do período (máx 90 dias)",
+        )
     with col2:
-        end_date = st.date_input("Data de Fim", value=end_date_default)
+        end_date = st.date_input(
+            "Data de Fim *", value=end_date_default, help="Data final do período"
+        )
 
     # Checkbox para filtrar horário
     filtrar_por_horario = st.checkbox("Deseja filtrar por horário?", value=False)
@@ -164,11 +164,18 @@ def show():
     # Botão para aplicar filtros e resetar paginação
     # -----------------------------------------------------------------
     if st.button("Aplicar Filtros"):
+        # Validações
         if start_date > end_date:
-            st.error("Data de início maior que a data de fim.")
+            st.error("Data de início deve ser anterior à data de fim.")
             return
-        start_date_str = format_datetime(start_date, start_time)
-        end_date_str = format_datetime(end_date, end_time)
+
+        # Validar período máximo de 90 dias
+        if (end_date - start_date).days > 90:
+            st.error("Período máximo permitido é de 90 dias.")
+            return
+
+        start_date_str = format_datetime_for_api(start_date, start_time)
+        end_date_str = format_datetime_for_api(end_date, end_time)
 
         # Salva no session_state
         st.session_state.act_start_date_str = start_date_str
@@ -179,7 +186,7 @@ def show():
         st.session_state.act_data = pd.DataFrame()
 
         # Faz a primeira busca
-        with st.spinner("Carregando dados..."):
+        with show_loading_state("Carregando dados..."):
             resp = fetch_statuses(
                 token,
                 controller_id,
@@ -192,7 +199,7 @@ def show():
             df = pd.DataFrame(resp.json())
             st.session_state.act_data = df
         else:
-            st.warning("Nenhum dado disponível ou falha na requisição.")
+            st.info("📭 Nenhum resultado encontrado para os filtros informados.")
 
     # -----------------------------------------------------------------
     # Se temos act_data vazio e nenhuma requisição feita, busca inicial
@@ -228,13 +235,13 @@ def show():
         # Exibir cabeçalho com infos
         start_disp = display_datetime(start_date, start_time)
         end_disp = display_datetime(end_date, end_time)
-        st.markdown(f"**Controlador Selecionado**: {controller_id}")
+        st.markdown(f"**Controlador Selecionado**: {controller_name}")
         if ("Não especificado" not in start_disp) or (
             "Não especificado" not in end_disp
         ):
             st.markdown(f"**Período:** {start_disp} até {end_disp}")
 
-        st.table(st.session_state.act_data)
+        st.dataframe(st.session_state.act_data, use_container_width=True)
 
         # "Carregar mais" só aparece se já houve alguma busca
         if st.button("Carregar mais"):

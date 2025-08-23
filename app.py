@@ -4,21 +4,20 @@ from streamlit_option_menu import option_menu
 
 load_dotenv()
 # Importações dos módulos
-import src.activations as activations
-import src.amostras as amostras
-import src.consumo_energia as consumo_energia
+import src.controller_activations as controller_activations
 import src.controllers as controllers
 import src.dashboard as dashboard
-import src.equipamentos as equipamentos
-import src.health_check as health_check
-import src.relatorios_medicoes as relatorios_medicoes
+import src.energy_consumptions as energy_consumptions
+import src.health as health
+import src.measurement_reports as measurement_reports
+import src.measurements as measurements
+import src.monitoring_stations as monitoring_stations
 import src.tariff_schedules as tariff_schedules
 import src.users as users
 import src.valves as valves
-
+import src.water_consumptions as water_consumptions
 # Exemplo da sua função de login/logout
 from login import login, logout
-
 
 # ---------- Configurações de Página ----------
 st.set_page_config(
@@ -136,7 +135,7 @@ def main():
     # ---------- SIDEBAR ----------
     with st.sidebar:
         st.markdown("## Status", unsafe_allow_html=True)
-        health_check.show_health_in_sidebar()
+        health.show_health_in_sidebar()
         st.markdown("---")
         if st.button("Sair", key="logout", help="Clique para sair do sistema"):
             logout()
@@ -145,16 +144,17 @@ def main():
     app_mode = option_menu(
         menu_title=None,
         options=[
-            "Amostras",
+            "Medições",
             "Dashboard",
             "Controladores",
             "Válvulas",
             "Consumo de Energia",
+            "Consumo de Água",
             "Tarifas",
             "Relatórios de Medições",
-            "Ativações",
+            "Ativações de Bomba",
             "Usuários",
-            # "Equipamentos",  # se necessário
+            "Estações de Monitoramento",
         ],
         icons=[
             "clipboard-data",
@@ -162,11 +162,12 @@ def main():
             "gear",
             "droplet-half",
             "lightning-charge",
+            "droplet",
             "cash-stack",
             "journal-code",
             "clock-history",
             "people",
-            # "tools",
+            "tools",
         ],
         menu_icon="cast",
         default_index=0,
@@ -225,8 +226,8 @@ def main():
     st.markdown("---")
 
     # ---------- CARREGAMENTO DE PÁGINAS ----------
-    if app_mode == "Amostras":
-        amostras.show()
+    if app_mode == "Medições":
+        measurements.show()
     elif app_mode == "Dashboard":
         dashboard.show()
     elif app_mode == "Controladores":
@@ -234,17 +235,19 @@ def main():
     elif app_mode == "Válvulas":
         valves.show()
     elif app_mode == "Consumo de Energia":
-        consumo_energia.show()
+        energy_consumptions.show()
+    elif app_mode == "Consumo de Água":
+        water_consumptions.show()
     elif app_mode == "Tarifas":
         tariff_schedules.show()
     elif app_mode == "Relatórios de Medições":
-        relatorios_medicoes.show()
-    elif app_mode == "Ativações":
-        activations.show()
+        measurement_reports.show()
+    elif app_mode == "Ativações de Bomba":
+        controller_activations.show()
     elif app_mode == "Usuários":
         users.show()
-    # elif app_mode == "Equipamentos":
-    #     equipamentos.show()
+    elif app_mode == "Estações de Monitoramento":
+        monitoring_stations.show()
 
 
 if __name__ == "__main__":

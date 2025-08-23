@@ -1,19 +1,15 @@
 # tests/test_tariff_schedules_contract.py
 
-import pytest
+from unittest.mock import MagicMock, Mock
+
 import streamlit as st
-from unittest.mock import Mock, MagicMock
 
 # Mock streamlit session_state before importing the module
 st.session_state = MagicMock()
 
-from src.tariff_schedules import (
-    get_all_tariffs,
-    get_current_tariff,
-    create_tariff,
-    update_tariff,
-    delete_tariff
-)
+from src.tariff_schedules import (create_tariff, delete_tariff,
+                                  get_all_tariffs, get_current_tariff,
+                                  update_tariff)
 
 
 class TestTariffSchedulesContract:
@@ -37,7 +33,7 @@ class TestTariffSchedulesContract:
             "nighttimeEnd": "06:00:00",
             "daytimeTariff": 0.15,
             "nighttimeTariff": 0.10,
-            "nighttimeDiscount": 30.0
+            "nighttimeDiscount": 30.0,
         }
 
         def mock_api_request(method, endpoint, token=None):
@@ -69,12 +65,12 @@ class TestTariffSchedulesContract:
                 "id": 1,
                 "date": "2023-12-01T00:00:00Z",
                 "daytimeStart": "06:00:00",
-                "daytimeEnd": "18:00:00", 
+                "daytimeEnd": "18:00:00",
                 "nighttimeStart": "18:00:00",
                 "nighttimeEnd": "06:00:00",
                 "daytimeTariff": 0.15,
                 "nighttimeTariff": 0.10,
-                "nighttimeDiscount": 30.0
+                "nighttimeDiscount": 30.0,
             }
         ]
 
@@ -121,7 +117,7 @@ class TestTariffSchedulesContract:
             "date": "2023-12-01T00:00:00Z",
             "daytimeTariff": 0.15,
             "nighttimeTariff": 0.10,
-            "nighttimeDiscount": 30.0
+            "nighttimeDiscount": 30.0,
         }
 
         def mock_api_request(method, endpoint, token=None):
@@ -180,7 +176,9 @@ class TestTariffSchedulesContract:
 
         # Validações
         assert result == {}
-        mock_error.assert_called_with("Erro interno do servidor ao buscar tarifa atual.")
+        mock_error.assert_called_with(
+            "Erro interno do servidor ao buscar tarifa atual."
+        )
 
     def test_create_tariff_success_200(self, monkeypatch):
         """Testa POST /api/tariff-schedules retorno 200."""
@@ -209,7 +207,7 @@ class TestTariffSchedulesContract:
             "nighttimeEnd": "06:00:00",
             "daytimeTariff": 0.15,
             "nighttimeTariff": 0.10,
-            "nighttimeDiscount": 30.0
+            "nighttimeDiscount": 30.0,
         }
         result = create_tariff("mock_token", tariff_data)
 
@@ -321,6 +319,7 @@ class TestTariffSchedulesContract:
 
     def test_api_request_failure_none(self, monkeypatch):
         """Testa quando api_request retorna None."""
+
         def mock_api_request(method, endpoint, token=None):
             return None
 
@@ -352,4 +351,6 @@ class TestTariffSchedulesContract:
 
         # Validações
         assert result == {}
-        mock_error.assert_called_with("Erro ao processar resposta JSON da tarifa atual.")
+        mock_error.assert_called_with(
+            "Erro ao processar resposta JSON da tarifa atual."
+        )

@@ -3,6 +3,8 @@
 import streamlit as st
 
 from api import api_request
+from src.ui_components import (handle_api_response, validate_email,
+                               validate_password)
 
 
 def create_user(token, data):
@@ -27,46 +29,91 @@ def show():
 
     st.subheader("Criar Usuário")
     with st.form("CreateUser"):
-        email = st.text_input("Email do Novo Usuário")
-        password = st.text_input("Senha", type="password")
-        confirm = st.text_input("Confirmação de Senha", type="password")
-        role = st.selectbox("Role", ["admin", "user"])
+        email = st.text_input(
+            "Email *",
+            placeholder="usuario@exemplo.com",
+            help="Endereço de email válido para login",
+        )
+        password = st.text_input(
+            "Senha *",
+            type="password",
+            placeholder="Digite uma senha segura",
+            help="Mínimo 8 caracteres, incluindo letras e números",
+        )
+        confirm = st.text_input(
+            "Confirmação de Senha *",
+            type="password",
+            placeholder="Digite a senha novamente",
+            help="Deve ser idêntica à senha informada acima",
+        )
+        role = st.selectbox(
+            "Perfil *",
+            ["admin", "user"],
+            index=1,  # Default to 'user'
+            help="Nível de permissão do usuário",
+        )
         submitted_create = st.form_submit_button("Criar")
         if submitted_create:
-            if email and password == confirm:
-                data = {
-                    "email": email,
-                    "password": password,
-                    "passwordConfirmation": confirm,
-                    "role": role,
-                }
-                resp = create_user(token, data)
-                if resp and resp.status_code == 200:
-                    st.success("Usuário criado com sucesso!")
-                else:
-                    st.error("Falha ao criar usuário.")
-                    if resp is not None:
-                        st.write(resp.text)
-            else:
-                st.error("Senhas não conferem ou email vazio.")
+            # Validações
+            if not email.strip():
+                st.error("Email é obrigatório.")
+                return
+
+            if not validate_email(email):
+                st.error("Email deve ter formato válido (exemplo@dominio.com).")
+                return
+
+            password_valid, password_msg = validate_password(password)
+            if not password_valid:
+                st.error(password_msg)
+                return
+
+            if password != confirm:
+                st.error("Senhas não conferem.")
+                return
+
+            data = {
+                "email": email,
+                "password": password,
+                "passwordConfirmation": confirm,
+                "role": role,
+            }
+
+            resp = create_user(token, data)
+            handle_api_response(resp, "Usuário criado com sucesso!")
+            if resp and 200 <= resp.status_code < 300:
+                st.rerun()
 
     st.markdown("---")
 
     st.subheader("Excluir Usuário")
     with st.form("DeleteUser"):
-        email_delete = st.text_input("Email do Usuário para Excluir")
-        submitted_delete = st.form_submit_button("Excluir")
+        email_delete = st.text_input(
+            "Email do Usuário para Excluir *",
+            placeholder="usuario@exemplo.com",
+            help="Digite o email exato do usuário que deve ser removido",
+        )
+
+        # Warning para operação destrutiva
+        if email_delete:
+            st.warning(
+                f"⚠️ **ATENÇÃO**: Esta operação irá excluir permanentemente o usuário **{email_delete}**"
+            )
+
+        submitted_delete = st.form_submit_button("🗑️ Confirmar Exclusão", type="primary")
         if submitted_delete:
-            if email_delete:
-                resp = delete_user(token, email_delete)
-                if resp and resp.status_code == 200:
-                    st.success("Usuário excluído com sucesso!")
-                else:
-                    st.error("Falha ao excluir usuário.")
-                    if resp is not None:
-                        st.write(resp.text)
-            else:
-                st.error("Informe o email do usuário para excluir.")
+            if not email_delete.strip():
+                st.error("Email é obrigatório.")
+                return
+
+            if not validate_email(email_delete):
+                st.error("Email deve ter formato válido.")
+                return
+
+            resp = delete_user(token, email_delete)
+            handle_api_response(resp, "Usuário excluído com sucesso!")
+            if resp and 200 <= resp.status_code < 300:
+                st.rerun()
 
 
 if __name__ == "__main__":

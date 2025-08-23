@@ -1,12 +1,46 @@
-# src/consumo_energia.py
+# src/energy_consumptions.py
 
-from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
 from api import api_request
+from src.controllers import get_controllers
+
+
+def selecionar_controlador():
+    """Componente de seleção de controlador
+
+    Retorna: (controller_id, controller_name) ou (None, None) se nenhum selecionado
+    """
+    token = st.session_state.get("token", None)
+    if not token:
+        st.error("Usuário não autenticado.")
+        return None, None
+
+    controllers = get_controllers(token)
+    if not controllers:
+        st.warning("Nenhum controlador cadastrado.")
+        return None, None
+
+    # Opção "Todos os Controladores" para não filtrar
+    controller_options = {"Todos os Controladores": None}
+    controller_options.update(
+        {
+            f"{controller['name']} (ID: {controller['id']})": controller["id"]
+            for controller in controllers
+        }
+    )
+
+    controller_choice = st.sidebar.selectbox(
+        "Filtrar por Controlador (Opcional)",
+        controller_options.keys(),
+        key="energia_controller_selector",
+    )
+    controller_id = controller_options[controller_choice]
+
+    return controller_id, controller_choice
 
 
 # Função para buscar dados de consumo de energia da API
@@ -141,29 +175,40 @@ def process_energy_consumption(df_consumption, tariffs):
 
     # A API já retorna dados calculados conforme OpenAPI schema:
     # daytimePower, daytimeCost, nighttimePower, nighttimeCost, nighttimeDiscount, totalCost
-    
+
     # Se os dados já têm custos calculados, usar diretamente
-    if "totalCost" in df_consumption.columns and "daytimeCost" in df_consumption.columns:
+    if (
+        "totalCost" in df_consumption.columns
+        and "daytimeCost" in df_consumption.columns
+    ):
         # Adicionar colunas compatíveis com UI existente
         df_consumption["custo"] = df_consumption["totalCost"]
-        
+
         # Criar coluna de período baseada nos dados da API
         df_consumption["periodo"] = df_consumption.apply(
-            lambda row: "Diurno" if row.get("daytimePower", 0) > row.get("nighttimePower", 0) else "Noturno",
-            axis=1
+            lambda row: (
+                "Diurno"
+                if row.get("daytimePower", 0) > row.get("nighttimePower", 0)
+                else "Noturno"
+            ),
+            axis=1,
         )
-        
+
         # Para compatibilidade, usar totalCost como consumption se não existir
         if "consumption" not in df_consumption.columns:
             # Somar potências diurna e noturna para ter valor total
-            df_consumption["consumption"] = df_consumption.get("daytimePower", 0) + df_consumption.get("nighttimePower", 0)
-        
+            df_consumption["consumption"] = df_consumption.get(
+                "daytimePower", 0
+            ) + df_consumption.get("nighttimePower", 0)
+
         return df_consumption
-    
+
     # Fallback: se API não retornar dados calculados, calcular manualmente (não deveria acontecer)
     if tariffs and "daytimeTariff" in tariffs and "nighttimeTariff" in tariffs:
-        st.warning("Calculando custos localmente - API deveria retornar dados processados.")
-        
+        st.warning(
+            "Calculando custos localmente - API deveria retornar dados processados."
+        )
+
         diurna = tariffs.get("daytimeTariff", 0)
         noturna = tariffs.get("nighttimeTariff", 0)
 
@@ -171,7 +216,7 @@ def process_energy_consumption(df_consumption, tariffs):
         try:
             daytime_start = int(tariffs.get("daytimeStart", "06:00:00").split(":")[0])
             daytime_end = int(tariffs.get("daytimeEnd", "18:00:00").split(":")[0])
-        except:
+        except (ValueError, IndexError, TypeError):
             daytime_start, daytime_end = 6, 18
 
         # Classificar período baseado no horário
@@ -183,7 +228,8 @@ def process_energy_consumption(df_consumption, tariffs):
         if "consumption" in df_consumption.columns:
             df_consumption["custo"] = df_consumption.apply(
                 lambda row: (
-                    row["consumption"] * diurna if row["periodo"] == "Diurno"
+                    row["consumption"] * diurna
+                    if row["periodo"] == "Diurno"
                     else row["consumption"] * noturna
                 ),
                 axis=1,
@@ -202,20 +248,22 @@ def display_graphs(df):
 
     # Usar dados reais da API quando disponíveis
     has_api_data = "daytimePower" in df.columns and "nighttimePower" in df.columns
-    
+
     if has_api_data:
         # Gráficos usando dados estruturados da API
         st.markdown("### Consumo de Energia Diurno vs Noturno (Dados da API)")
-        
+
         # Somar todos os registros para comparação diurno/noturno
         total_daytime = df["daytimePower"].sum()
         total_nighttime = df["nighttimePower"].sum()
-        
-        period_data = pd.DataFrame({
-            "periodo": ["Diurno", "Noturno"],
-            "power": [total_daytime, total_nighttime]
-        })
-        
+
+        period_data = pd.DataFrame(
+            {
+                "periodo": ["Diurno", "Noturno"],
+                "power": [total_daytime, total_nighttime],
+            }
+        )
+
         fig1 = px.bar(
             period_data,
             x="periodo",
@@ -225,17 +273,19 @@ def display_graphs(df):
             color="periodo",
         )
         st.plotly_chart(fig1, use_container_width=True)
-        
+
         # Gráfico de custos usando dados da API
         if "daytimeCost" in df.columns and "nighttimeCost" in df.columns:
             total_daytime_cost = df["daytimeCost"].sum()
             total_nighttime_cost = df["nighttimeCost"].sum()
-            
-            cost_data = pd.DataFrame({
-                "periodo": ["Diurno", "Noturno"],
-                "custo": [total_daytime_cost, total_nighttime_cost]
-            })
-            
+
+            cost_data = pd.DataFrame(
+                {
+                    "periodo": ["Diurno", "Noturno"],
+                    "custo": [total_daytime_cost, total_nighttime_cost],
+                }
+            )
+
             st.markdown("### Custos de Energia Diurno vs Noturno")
             fig2 = px.bar(
                 cost_data,
@@ -246,7 +296,7 @@ def display_graphs(df):
                 color="periodo",
             )
             st.plotly_chart(fig2, use_container_width=True)
-    
+
     # Gráficos temporais (compatibilidade com implementação anterior)
     if "consumption" in df.columns and "date_display" in df.columns:
         st.markdown("### Consumo ao Longo do Tempo")
@@ -273,13 +323,13 @@ def display_graphs(df):
             markers=True,
         )
         st.plotly_chart(fig4, use_container_width=True)
-        
+
     # Se tem dados da API, mostrar também gráfico de custo total
     if "totalCost" in df.columns and "date_display" in df.columns:
         st.markdown("### Custo Total ao Longo do Tempo (API)")
         fig5 = px.line(
             df,
-            x="date_display", 
+            x="date_display",
             y="totalCost",
             labels={"totalCost": "Custo Total (R$)", "date_display": "Data"},
             title="Custo Total de Energia (Dados da API)",
@@ -331,7 +381,9 @@ def simulate_future_costs(
     st.markdown(f"**Tarifa Noturna:** R${noturna:.4f} por kWh")
     if desconto > 0:
         st.markdown(f"**Desconto Noturno:** {desconto:.1f}%")
-        st.markdown(f"**Tarifa Noturna com Desconto:** R${tarifa_noturna_com_desconto:.4f} por kWh")
+        st.markdown(
+            f"**Tarifa Noturna com Desconto:** R${tarifa_noturna_com_desconto:.4f} por kWh"
+        )
     st.markdown(f"**Custo Projetado Diurno:** R${custo_diurno:.2f}")
     st.markdown(f"**Custo Projetado Noturno:** R${custo_noturno:.2f}")
     st.markdown(f"**Custo Total Projetado:** R${custo_total:.2f}")
@@ -356,11 +408,17 @@ def show():
     start_date_str = start_date.strftime("%Y-%m-%d") if start_date else None
     end_date_str = end_date.strftime("%Y-%m-%d") if end_date else None
 
+    # Filtro por controlador usando seletor
+    st.sidebar.header("Filtros por Controlador")
+    controller_id, controller_name = selecionar_controlador()
+
     # Botão para buscar dados
     if st.sidebar.button("Buscar Dados"):
         # Buscar dados de consumo de energia
         df_consumption = fetch_energy_consumption(
-            start_date=start_date_str, end_date=end_date_str
+            start_date=start_date_str,
+            end_date=end_date_str,
+            controller_id=controller_id,
         )
 
         # Buscar tarifas vigentes
@@ -374,7 +432,7 @@ def show():
             st.markdown(
                 f"**Tarifa Noturna:** R${tariffs.get('nighttimeTariff', 0):.4f} por kWh"
             )
-            if tariffs.get('nighttimeDiscount', 0) > 0:
+            if tariffs.get("nighttimeDiscount", 0) > 0:
                 st.markdown(
                     f"**Desconto Noturno:** {tariffs.get('nighttimeDiscount', 0):.1f}%"
                 )
@@ -385,6 +443,10 @@ def show():
         df_calculado = process_energy_consumption(df_consumption, tariffs)
 
         if not df_calculado.empty:
+            # Exibir cabeçalho com info do controlador selecionado
+            if controller_id:
+                st.markdown(f"**Controlador Selecionado:** {controller_name}")
+
             # Exibir dados
             st.subheader("Dados de Consumo e Custo")
             # Usar a coluna formatada para exibição

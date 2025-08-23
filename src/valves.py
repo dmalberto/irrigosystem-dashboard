@@ -2,10 +2,7 @@ import pandas as pd
 import streamlit as st
 
 from api import api_request
-from src.controllers import (  # para reusar a lógica
-    get_controllers,
-    rename_controller_columns,
-)
+from src.controllers import get_controllers  # para reusar a lógica
 
 
 def rename_valve_columns(df: pd.DataFrame):
@@ -31,18 +28,34 @@ def get_valves(token, controller_id):
     return []
 
 
-def create_valve(token, controller_id, flow_rate):
-    """POST /api/controllers/{id}/valves"""
+def create_valve(token, controller_id, valve_id, flow_rate):
+    """POST /api/controllers/{controllerId}/valves
+
+    Campos obrigatórios conforme Swagger: id (int32), flowRate (double)
+    controllerId é int64 no path
+    """
     endpoint = f"/api/controllers/{controller_id}/valves"
-    body = {"flowRate": flow_rate}
+    body = {
+        "id": valve_id,  # required field conforme Swagger
+        "flowRate": flow_rate,
+        "controllerId": controller_id,  # incluir por consistência
+    }
     resp = api_request("POST", endpoint, token=token, json=body)
     return resp
 
 
 def update_valve(token, controller_id, valve_id, flow_rate):
-    """PUT /api/controllers/{controllerId}/valves/{valveId}"""
+    """PUT /api/controllers/{controllerId}/valves/{id}
+
+    Campos obrigatórios conforme Swagger: id (int32), flowRate (double)
+    Path params: controllerId (int64), id (int32)
+    """
     endpoint = f"/api/controllers/{controller_id}/valves/{valve_id}"
-    body = {"flowRate": flow_rate}
+    body = {
+        "id": valve_id,  # required field conforme Swagger
+        "flowRate": flow_rate,
+        "controllerId": controller_id,  # incluir por consistência
+    }
     resp = api_request("PUT", endpoint, token=token, json=body)
     return resp
 
@@ -63,17 +76,20 @@ def show_list_valves(token):
         st.warning("Nenhum controlador disponível para selecionar.")
         return
 
-    # Montamos um selectbox com IDs dos controladores
-    df_controllers = pd.DataFrame(controllers_data)
-    if not df_controllers.empty:
-        if "id" in df_controllers.columns:
-            df_controllers.rename(columns={"id": "ID"}, inplace=True)
-        controller_ids = df_controllers["ID"].tolist()
-    else:
+    # Criar opções com nome + ID visível
+    controller_options = {
+        f"{controller['name']} (ID: {controller['id']})": controller["id"]
+        for controller in controllers_data
+    }
+
+    if not controller_options:
         st.warning("Nenhum controlador encontrado.")
         return
 
-    controller_id = st.selectbox("Selecione o Controlador", controller_ids)
+    controller_choice = st.selectbox(
+        "Selecione o Controlador", controller_options.keys()
+    )
+    controller_id = controller_options[controller_choice]
 
     if st.button("Carregar Válvulas"):
         data = get_valves(token, controller_id)
@@ -97,20 +113,33 @@ def show_create_valve(token):
         st.warning("Não há controladores para associar a uma válvula.")
         return
 
-    df_ctrl = pd.DataFrame(controllers_data)
-    if "id" in df_ctrl.columns:
-        df_ctrl.rename(columns={"id": "ID"}, inplace=True)
-    controller_ids = df_ctrl["ID"].tolist()
+    # Criar opções com nome + ID visível
+    controller_options = {
+        f"{controller['name']} (ID: {controller['id']})": controller["id"]
+        for controller in controllers_data
+    }
 
     with st.form("FormCriarValvula"):
-        selected_controller = st.selectbox("Selecione o Controlador", controller_ids)
+        controller_choice = st.selectbox(
+            "Selecione o Controlador", controller_options.keys()
+        )
+        selected_controller = controller_options[controller_choice]
+        valve_id = st.number_input(
+            "ID da Válvula", min_value=1, step=1, help="ID único da válvula (int32)"
+        )
         flow_rate = st.number_input("Taxa de Fluxo (L/min)", min_value=0.0, step=1.0)
         submitted = st.form_submit_button("Criar Válvula")
         if submitted:
-            resp = create_valve(token, selected_controller, flow_rate)
-            if resp and resp.status_code == 201:
+            resp = create_valve(token, selected_controller, valve_id, flow_rate)
+            if resp and resp.status_code == 200:
                 st.success("Válvula criada com sucesso!")
                 st.rerun()
+            elif resp and resp.status_code == 400:
+                st.error("Requisição inválida - verifique os dados informados.")
+            elif resp and resp.status_code == 409:
+                st.error("Conflito - válvula com este ID já existe.")
+            elif resp and resp.status_code == 500:
+                st.error("Erro interno do servidor.")
             else:
                 st.error("Falha ao criar válvula.")
 
@@ -123,12 +152,16 @@ def show_edit_valve(token):
         st.warning("Não há controladores para associar a válvulas.")
         return
 
-    df_ctrl = pd.DataFrame(controllers_data)
-    if "id" in df_ctrl.columns:
-        df_ctrl.rename(columns={"id": "ID"}, inplace=True)
-    controller_ids = df_ctrl["ID"].tolist()
+    # Criar opções com nome + ID visível
+    controller_options = {
+        f"{controller['name']} (ID: {controller['id']})": controller["id"]
+        for controller in controllers_data
+    }
 
-    selected_controller = st.selectbox("Selecione o Controlador", controller_ids)
+    controller_choice = st.selectbox(
+        "Selecione o Controlador", controller_options.keys()
+    )
+    selected_controller = controller_options[controller_choice]
     if st.button("Carregar Válvulas"):
         data = get_valves(token, selected_controller)
         if not data:
@@ -160,35 +193,43 @@ def show_edit_valve(token):
 def show_delete_valve(token):
     st.subheader("Excluir Válvula")
 
-    controllers_data = get_controllers(token)
-    if not controllers_data:
-        st.warning("Não há controladores para associar a válvulas.")
+    # Usar seletor padronizado de controlador
+    controller_id, controller_name = controller_selector(
+        token, "Selecione o Controlador *"
+    )
+
+    if not controller_id:
         return
 
-    df_ctrl = pd.DataFrame(controllers_data)
-    if "id" in df_ctrl.columns:
-        df_ctrl.rename(columns={"id": "ID"}, inplace=True)
-    controller_ids = df_ctrl["ID"].tolist()
+    # Usar seletor dependente de válvulas
+    valve_id, valve_name = valve_selector(
+        token, controller_id, "Selecione a Válvula para Excluir *"
+    )
 
-    selected_controller = st.selectbox("Selecione o Controlador", controller_ids)
-    if st.button("Carregar Válvulas para Excluir"):
-        data = get_valves(token, selected_controller)
-        if not data:
-            st.info("Nenhuma válvula para excluir.")
-            return
-        df = pd.DataFrame(data)
-        rename_valve_columns(df)
-        if "ID" in df.columns:
-            df.set_index("ID", inplace=True)
-        ids = list(df.index)
-        selected_valve = st.selectbox("Selecione o ID da Válvula", ids)
-        if st.button("Confirmar Exclusão"):
-            resp = delete_valve(token, selected_controller, selected_valve)
-            if resp and resp.status_code == 204:
-                st.success("Válvula excluída com sucesso!")
+    if not valve_id:
+        return
+
+    # Mostrar informações da válvula
+    valves_data = get_valves(token, controller_id)
+    valve_info = next(
+        (v for v in valves_data if cast_to_int32(v["id"]) == valve_id), None
+    )
+
+    if valve_info:
+        st.warning("⚠️ **ATENÇÃO**: Você está prestes a excluir a válvula:")
+        st.info(
+            f"""
+        - **Controlador**: {controller_name}
+        - **ID da Válvula**: {valve_id}
+        - **Vazão**: {valve_info.get('flowRate', 0):.1f} L/min
+        """
+        )
+
+        if st.button("🗑️ Confirmar Exclusão", type="primary"):
+            resp = delete_valve(token, controller_id, valve_id)
+            if handle_api_response_v2(resp, "Válvula excluída com sucesso!"):
+                invalidate_caches_after_mutation("valves")
                 st.rerun()
-            else:
-                st.error("Falha ao excluir válvula.")
 
 
 def show():

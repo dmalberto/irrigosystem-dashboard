@@ -1,9 +1,13 @@
 # src/tariff_schedules.py
 
+from datetime import date, time
+
 import pandas as pd
 import streamlit as st
 
 from api import api_request
+from src.ui_components import (format_datetime_for_api, handle_api_response,
+                               monetary_input, percentage_input)
 
 
 def rename_tariff_columns(df: pd.DataFrame):
@@ -29,7 +33,7 @@ def rename_tariff_columns(df: pd.DataFrame):
 
 def get_all_tariffs(token):
     """GET /api/tariff-schedules
-    
+
     Conforme OpenAPI, retorna TariffSchedule singular (não array).
     Normaliza para array para compatibilidade com UI existente.
     """
@@ -62,15 +66,15 @@ def get_all_tariffs(token):
 
 def get_current_tariff(token):
     """GET /api/tariff-schedules/current
-    
+
     Retorna objeto TariffSchedule ou erro conforme OpenAPI.
     """
     endpoint = "/api/tariff-schedules/current"
     response = api_request("GET", endpoint, token=token)
-    
+
     if not response:
         return {}
-    
+
     if response.status_code == 200:
         try:
             return response.json()
@@ -90,7 +94,7 @@ def get_current_tariff(token):
 
 def create_tariff(token, data):
     """POST /api/tariff-schedules
-    
+
     Retorna TariffSchedule criado ou ErrorResponse conforme OpenAPI.
     """
     endpoint = "/api/tariff-schedules"
@@ -100,7 +104,7 @@ def create_tariff(token, data):
 
 def update_tariff(token, tariff_id, data):
     """PUT /api/tariff-schedules/{id}
-    
+
     Retorna TariffSchedule atualizado ou ErrorResponse conforme OpenAPI.
     """
     endpoint = f"/api/tariff-schedules/{tariff_id}"
@@ -110,13 +114,55 @@ def update_tariff(token, tariff_id, data):
 
 def delete_tariff(token, tariff_id):
     """DELETE /api/tariff-schedules/{id}
-    
+
     Conforme OpenAPI, não retorna corpo na resposta de sucesso (204).
     Possíveis códigos: 404 (Not Found), 500 (Server Error).
     """
     endpoint = f"/api/tariff-schedules/{tariff_id}"
     resp = api_request("DELETE", endpoint, token=token)
     return resp
+
+
+def tariff_selector(token, label="Selecione a Tarifa *"):
+    """Seletor padronizado de tarifas com formato 'Data (ID: X)'."""
+    all_tariffs = get_all_tariffs(token)
+    if not all_tariffs:
+        st.warning("Nenhuma tarifa cadastrada.")
+        return None, None
+
+    tariff_options = {
+        f"{tariff['date'][:10]} (ID: {tariff['id']})": tariff["id"]
+        for tariff in all_tariffs
+        if "id" in tariff and "date" in tariff
+    }
+
+    if not tariff_options:
+        st.warning("Nenhuma tarifa disponível.")
+        return None, None
+
+    choice = st.selectbox(label, tariff_options.keys())
+    selected_id = tariff_options[choice]
+
+    # Retornar objeto completo da tarifa
+    selected_tariff = next((t for t in all_tariffs if t["id"] == selected_id), None)
+    return selected_id, selected_tariff
+
+
+def validate_tariff_times(day_start, day_end, night_start, night_end):
+    """Valida se os horários não se sobrepõem incorretamente."""
+    # Converter time objects para minutos para facilitar comparação
+    day_start_min = day_start.hour * 60 + day_start.minute
+    day_end_min = day_end.hour * 60 + day_end.minute
+    # night_start_min = night_start.hour * 60 + night_start.minute
+    # night_end_min = night_end.hour * 60 + night_end.minute
+
+    # Validação básica: período diurno deve ser consistente
+    if day_start_min >= day_end_min:
+        return False, "Horário de início diurno deve ser anterior ao fim diurno."
+
+    # TODO: Implementar validação completa de sobreposição diurno/noturno
+    # Por ora, apenas validação básica do período diurno
+    return True, "Horários válidos."
 
 
 def show_current_tariff(token):
@@ -171,147 +217,228 @@ def show_create_tariff(token):
     """Formulário para criar nova tarifa."""
     st.subheader("Criar Nova Tarifa")
     with st.form("CriarTarifa"):
-        date_val = st.text_input("Data (Formato: YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SS)")
-        daytime_start = st.text_input("Início (Diurno)", value="06:00:00")
-        daytime_end = st.text_input("Fim (Diurno)", value="18:00:00")
-        nighttime_start = st.text_input("Início (Noturno)", value="18:00:00")
-        nighttime_end = st.text_input("Fim (Noturno)", value="06:00:00")
-        daytime_tariff = st.number_input("Tarifa Diurna", min_value=0.0, step=0.1)
-        nighttime_tariff = st.number_input("Tarifa Noturna", min_value=0.0, step=0.1)
-        nighttime_discount = st.number_input(
-            "Desconto Noturno", min_value=0.0, step=0.1
+        # Data usando date_input
+        date_val = st.date_input(
+            "Data da Tarifa *", value=date.today(), help="Data de vigência da tarifa"
+        )
+
+        # Horários usando time_input
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### Período Diurno")
+            daytime_start = st.time_input(
+                "Início (Diurno) *",
+                value=time(6, 0),
+                help="Horário de início do período diurno",
+            )
+            daytime_end = st.time_input(
+                "Fim (Diurno) *",
+                value=time(18, 0),
+                help="Horário de fim do período diurno",
+            )
+
+        with col2:
+            st.markdown("#### Período Noturno")
+            nighttime_start = st.time_input(
+                "Início (Noturno) *",
+                value=time(18, 0),
+                help="Horário de início do período noturno",
+            )
+            nighttime_end = st.time_input(
+                "Fim (Noturno) *",
+                value=time(6, 0),
+                help="Horário de fim do período noturno",
+            )
+
+        # Valores monetários
+        daytime_tariff = monetary_input(
+            "Tarifa Diurna (R$/kWh) *",
+            min_value=0.01,
+            max_value=5.0,
+            help_text="Valor da tarifa no período diurno",
+        )
+
+        nighttime_tariff = monetary_input(
+            "Tarifa Noturna (R$/kWh) *",
+            min_value=0.01,
+            max_value=5.0,
+            help_text="Valor da tarifa no período noturno",
+        )
+
+        nighttime_discount = percentage_input(
+            "Desconto Noturno (%)",
+            help_text="Percentual de desconto aplicado no período noturno",
         )
 
         submitted_new = st.form_submit_button("Criar Tarifa")
         if submitted_new:
+            # Validar horários
+            times_valid, times_msg = validate_tariff_times(
+                daytime_start, daytime_end, nighttime_start, nighttime_end
+            )
+            if not times_valid:
+                st.error(times_msg)
+                return
+
+            # Preparar dados para API
             data = {
-                "date": date_val,
-                "daytimeStart": daytime_start,
-                "daytimeEnd": daytime_end,
-                "nighttimeStart": nighttime_start,
-                "nighttimeEnd": nighttime_end,
+                "date": format_datetime_for_api(date_val),
+                "daytimeStart": daytime_start.strftime("%H:%M:%S"),
+                "daytimeEnd": daytime_end.strftime("%H:%M:%S"),
+                "nighttimeStart": nighttime_start.strftime("%H:%M:%S"),
+                "nighttimeEnd": nighttime_end.strftime("%H:%M:%S"),
                 "daytimeTariff": daytime_tariff,
                 "nighttimeTariff": nighttime_tariff,
                 "nighttimeDiscount": nighttime_discount,
             }
+
             resp = create_tariff(token, data)
-            if resp and resp.status_code == 200:
-                st.success("Tarifa criada com sucesso!")
+            handle_api_response(resp, "Tarifa criada com sucesso!")
+            if resp and 200 <= resp.status_code < 300:
                 st.rerun()
-            elif resp and resp.status_code == 400:
-                st.error("Dados inválidos. Verifique os campos obrigatórios.")
-            elif resp and resp.status_code == 409:
-                st.error("Conflito: tarifa já existe para esta data.")
-            elif resp and resp.status_code == 500:
-                st.error("Erro interno do servidor ao criar tarifa.")
-            else:
-                st.error("Falha ao criar tarifa.")
 
 
 def show_edit_tariff(token):
     """Formulário para editar uma tarifa existente."""
     st.subheader("Editar Tarifa Existente")
-    # Precisamos listar as tarifas para o usuário escolher qual editar
-    all_tariffs = get_all_tariffs(token)
-    if not all_tariffs:
-        st.info("Nenhuma tarifa cadastrada para editar.")
-        return
 
-    # Selecionar ID da tarifa
-    tariff_ids = [t["id"] for t in all_tariffs if "id" in t]
-    selected_id = st.selectbox("Selecione o ID da Tarifa para Editar", tariff_ids)
-    # Encontrar objeto da tarifa
-    tariff_obj = next((t for t in all_tariffs if t["id"] == selected_id), None)
+    # Usar seletor padronizado
+    selected_id, tariff_obj = tariff_selector(token, "Selecione a Tarifa para Editar")
     if not tariff_obj:
-        st.error("Tarifa não encontrada.")
         return
 
     with st.form("EditarTarifa"):
-        # Formatar data para exibição no formato brasileiro
+        # Converter data ISO para date object
         try:
-            formatted_date = pd.to_datetime(tariff_obj["date"]).strftime(
-                "%d/%m/%Y %H:%M:%S"
+            date_obj = pd.to_datetime(tariff_obj["date"]).date()
+        except (ValueError, TypeError, KeyError):
+            date_obj = date.today()
+
+        date_val = st.date_input(
+            "Data da Tarifa *", value=date_obj, help="Data de vigência da tarifa"
+        )
+
+        # Converter strings de horário para time objects
+        def parse_time_string(time_str):
+            try:
+                return time.fromisoformat(time_str)
+            except (ValueError, TypeError):
+                # Fallback para formato HH:MM:SS
+                try:
+                    parts = time_str.split(":")
+                    return time(
+                        int(parts[0]),
+                        int(parts[1]),
+                        int(parts[2]) if len(parts) > 2 else 0,
+                    )
+                except (ValueError, TypeError, IndexError):
+                    return time(0, 0)
+
+        # Horários usando time_input
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### Período Diurno")
+            daytime_start = st.time_input(
+                "Início (Diurno) *",
+                value=parse_time_string(tariff_obj["daytimeStart"]),
+                help="Horário de início do período diurno",
             )
-        except:
-            formatted_date = tariff_obj["date"]
-        date_val = st.text_input("Data", value=formatted_date)
-        daytime_start = st.text_input(
-            "Início (Diurno)", value=tariff_obj["daytimeStart"]
-        )
-        daytime_end = st.text_input("Fim (Diurno)", value=tariff_obj["daytimeEnd"])
-        nighttime_start = st.text_input(
-            "Início (Noturno)", value=tariff_obj["nighttimeStart"]
-        )
-        nighttime_end = st.text_input("Fim (Noturno)", value=tariff_obj["nighttimeEnd"])
-        daytime_tariff = st.number_input(
-            "Tarifa Diurna",
+            daytime_end = st.time_input(
+                "Fim (Diurno) *",
+                value=parse_time_string(tariff_obj["daytimeEnd"]),
+                help="Horário de fim do período diurno",
+            )
+
+        with col2:
+            st.markdown("#### Período Noturno")
+            nighttime_start = st.time_input(
+                "Início (Noturno) *",
+                value=parse_time_string(tariff_obj["nighttimeStart"]),
+                help="Horário de início do período noturno",
+            )
+            nighttime_end = st.time_input(
+                "Fim (Noturno) *",
+                value=parse_time_string(tariff_obj["nighttimeEnd"]),
+                help="Horário de fim do período noturno",
+            )
+
+        # Valores monetários
+        daytime_tariff = monetary_input(
+            "Tarifa Diurna (R$/kWh) *",
             value=float(tariff_obj["daytimeTariff"]),
-            step=0.1,
+            min_value=0.01,
+            max_value=5.0,
+            help_text="Valor da tarifa no período diurno",
         )
-        nighttime_tariff = st.number_input(
-            "Tarifa Noturna",
+
+        nighttime_tariff = monetary_input(
+            "Tarifa Noturna (R$/kWh) *",
             value=float(tariff_obj["nighttimeTariff"]),
-            step=0.1,
+            min_value=0.01,
+            max_value=5.0,
+            help_text="Valor da tarifa no período noturno",
         )
-        nighttime_discount = st.number_input(
-            "Desconto Noturno",
+
+        nighttime_discount = percentage_input(
+            "Desconto Noturno (%)",
             value=float(tariff_obj["nighttimeDiscount"]),
-            step=0.1,
+            help_text="Percentual de desconto aplicado no período noturno",
         )
+
         submitted_edit = st.form_submit_button("Atualizar Tarifa")
         if submitted_edit:
+            # Validar horários
+            times_valid, times_msg = validate_tariff_times(
+                daytime_start, daytime_end, nighttime_start, nighttime_end
+            )
+            if not times_valid:
+                st.error(times_msg)
+                return
+
             data_edit = {
                 "id": selected_id,
-                "date": date_val,
-                "daytimeStart": daytime_start,
-                "daytimeEnd": daytime_end,
-                "nighttimeStart": nighttime_start,
-                "nighttimeEnd": nighttime_end,
+                "date": format_datetime_for_api(date_val),
+                "daytimeStart": daytime_start.strftime("%H:%M:%S"),
+                "daytimeEnd": daytime_end.strftime("%H:%M:%S"),
+                "nighttimeStart": nighttime_start.strftime("%H:%M:%S"),
+                "nighttimeEnd": nighttime_end.strftime("%H:%M:%S"),
                 "daytimeTariff": daytime_tariff,
                 "nighttimeTariff": nighttime_tariff,
                 "nighttimeDiscount": nighttime_discount,
             }
+
             resp = update_tariff(token, selected_id, data_edit)
-            if resp and resp.status_code == 200:
-                st.success("Tarifa atualizada com sucesso!")
+            handle_api_response(resp, "Tarifa atualizada com sucesso!")
+            if resp and 200 <= resp.status_code < 300:
                 st.rerun()
-            elif resp and resp.status_code == 400:
-                st.error("Dados inválidos. Verifique os campos obrigatórios.")
-            elif resp and resp.status_code == 404:
-                st.error("Tarifa não encontrada.")
-            elif resp and resp.status_code == 409:
-                st.error("Conflito: tarifa já existe para esta data.")
-            elif resp and resp.status_code == 500:
-                st.error("Erro interno do servidor ao atualizar tarifa.")
-            else:
-                st.error("Falha ao atualizar tarifa.")
 
 
 def show_delete_tariff(token):
     """Formulário para excluir uma tarifa."""
     st.subheader("Excluir Tarifa Existente")
-    all_tariffs = get_all_tariffs(token)
-    if not all_tariffs:
-        st.info("Nenhuma tarifa cadastrada para excluir.")
+
+    # Usar seletor padronizado
+    selected_id, tariff_obj = tariff_selector(token, "Selecione a Tarifa para Excluir")
+    if not tariff_obj:
         return
 
-    # Selecionar ID para excluir
-    tariff_ids = [t["id"] for t in all_tariffs if "id" in t]
-    selected_id = st.selectbox("Selecione o ID da Tarifa para Excluir", tariff_ids)
+    # Mostrar informações da tarifa selecionada
+    st.warning("⚠️ **ATENÇÃO**: Você está prestes a excluir a tarifa:")
+    st.info(
+        f"""
+    - **Data**: {tariff_obj['date'][:10]}
+    - **ID**: {tariff_obj['id']}
+    - **Tarifa Diurna**: R$ {tariff_obj['daytimeTariff']:.4f}/kWh
+    - **Tarifa Noturna**: R$ {tariff_obj['nighttimeTariff']:.4f}/kWh
+    - **Desconto Noturno**: {tariff_obj['nighttimeDiscount']:.1f}%
+    """
+    )
 
-    if st.button("Confirmar Exclusão"):
+    if st.button("🗑️ Confirmar Exclusão", type="primary"):
         resp = delete_tariff(token, selected_id)
-        # OpenAPI define DELETE sem retorno de corpo (status 204)
-        # Mas algumas implementações podem retornar 200
-        if resp and resp.status_code in [200, 204]:
-            st.success("Tarifa excluída com sucesso!")
+        handle_api_response(resp, "Tarifa excluída com sucesso!")
+        if resp and 200 <= resp.status_code < 300:
             st.rerun()
-        elif resp and resp.status_code == 404:
-            st.error("Tarifa não encontrada para exclusão.")
-        elif resp and resp.status_code == 500:
-            st.error("Erro interno do servidor ao excluir tarifa.")
-        else:
-            st.error("Falha ao excluir tarifa.")
 
 
 def show():

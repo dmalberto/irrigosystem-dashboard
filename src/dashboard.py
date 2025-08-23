@@ -11,6 +11,10 @@ from api import api_request
 
 def rename_columns(df):
     if not df.empty:
+        # Formatar datas para o padrão brasileiro
+        if "date" in df.columns:
+            df["date"] = df["date"].dt.strftime("%d/%m/%Y %H:%M:%S")
+
         columns_mapping = {
             "id": "ID",
             "date": "Data",

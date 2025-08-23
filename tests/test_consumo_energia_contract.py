@@ -1,14 +1,14 @@
-# tests/test_consumo_energia_contract.py
+# tests/test_energy_consumptions_contract.py
+
+from unittest.mock import MagicMock, Mock
 
 import pandas as pd
-import pytest
 import streamlit as st
-from unittest.mock import Mock, MagicMock
 
 # Mock streamlit session_state before importing the module
 st.session_state = MagicMock()
 
-from src.consumo_energia import fetch_energy_consumption
+from src.energy_consumptions import fetch_energy_consumption
 
 
 class TestEnergyConsumptionContract:
@@ -31,7 +31,7 @@ class TestEnergyConsumptionContract:
                 "nighttimePower": 80.3,
                 "nighttimeCost": 20.1,
                 "nighttimeDiscount": 0.3,
-                "totalCost": 70.3
+                "totalCost": 70.3,
             }
         ]
 
@@ -42,7 +42,7 @@ class TestEnergyConsumptionContract:
             assert token == "mock_token"
             return mock_response
 
-        monkeypatch.setattr("src.consumo_energia.api_request", mock_api_request)
+        monkeypatch.setattr("src.energy_consumptions.api_request", mock_api_request)
 
         # Executa função
         result = fetch_energy_consumption(controller_id=123, period="daily")
@@ -64,11 +64,11 @@ class TestEnergyConsumptionContract:
         def mock_api_request(method, endpoint, token=None, params=None):
             return mock_response
 
-        monkeypatch.setattr("src.consumo_energia.api_request", mock_api_request)
+        monkeypatch.setattr("src.energy_consumptions.api_request", mock_api_request)
 
         # Mock st.error para verificar se foi chamado
         mock_error = Mock()
-        monkeypatch.setattr("src.consumo_energia.st.error", mock_error)
+        monkeypatch.setattr("src.energy_consumptions.st.error", mock_error)
 
         # Executa função
         result = fetch_energy_consumption()
@@ -87,11 +87,11 @@ class TestEnergyConsumptionContract:
         def mock_api_request(method, endpoint, token=None, params=None):
             return mock_response
 
-        monkeypatch.setattr("src.consumo_energia.api_request", mock_api_request)
+        monkeypatch.setattr("src.energy_consumptions.api_request", mock_api_request)
 
         # Mock st.error para verificar se foi chamado
         mock_error = Mock()
-        monkeypatch.setattr("src.consumo_energia.st.error", mock_error)
+        monkeypatch.setattr("src.energy_consumptions.st.error", mock_error)
 
         # Executa função
         result = fetch_energy_consumption()
@@ -103,14 +103,15 @@ class TestEnergyConsumptionContract:
 
     def test_fetch_energy_consumption_api_request_failure(self, monkeypatch):
         """Testa quando api_request retorna None (falha de conexão)."""
+
         def mock_api_request(method, endpoint, token=None, params=None):
             return None
 
-        monkeypatch.setattr("src.consumo_energia.api_request", mock_api_request)
+        monkeypatch.setattr("src.energy_consumptions.api_request", mock_api_request)
 
         # Mock st.error para verificar se foi chamado
         mock_error = Mock()
-        monkeypatch.setattr("src.consumo_energia.st.error", mock_error)
+        monkeypatch.setattr("src.energy_consumptions.st.error", mock_error)
 
         # Executa função
         result = fetch_energy_consumption()
@@ -118,12 +119,14 @@ class TestEnergyConsumptionContract:
         # Validações
         assert isinstance(result, pd.DataFrame)
         assert result.empty
-        mock_error.assert_called_with("Erro ao conectar com a API de consumo de energia.")
+        mock_error.assert_called_with(
+            "Erro ao conectar com a API de consumo de energia."
+        )
 
     def test_fetch_energy_consumption_swagger_params(self, monkeypatch):
         """Testa se parâmetros são passados corretamente conforme Swagger."""
         captured_params = {}
-        
+
         def mock_api_request(method, endpoint, token=None, params=None):
             captured_params.update(params or {})
             mock_response = Mock()
@@ -131,20 +134,20 @@ class TestEnergyConsumptionContract:
             mock_response.json.return_value = []
             return mock_response
 
-        monkeypatch.setattr("src.consumo_energia.api_request", mock_api_request)
-        monkeypatch.setattr("src.consumo_energia.st.warning", Mock())
+        monkeypatch.setattr("src.energy_consumptions.api_request", mock_api_request)
+        monkeypatch.setattr("src.energy_consumptions.st.warning", Mock())
 
         # Executa com parâmetros do Swagger
         fetch_energy_consumption(
             controller_id=456,
             period="weekly",
             start_date="2023-12-01",
-            end_date="2023-12-31"
+            end_date="2023-12-31",
         )
 
         # Validações dos parâmetros conforme Swagger
         assert captured_params["controllerId"] == 456  # int64
-        assert captured_params["period"] == "weekly"   # string
+        assert captured_params["period"] == "weekly"  # string
         # Parâmetros de data mantidos para compatibilidade
         assert captured_params["startDate"] == "2023-12-01"
         assert captured_params["endDate"] == "2023-12-31"
@@ -155,7 +158,7 @@ class TestEnergyConsumptionContract:
 
         # Mock st.error para verificar se foi chamado
         mock_error = Mock()
-        monkeypatch.setattr("src.consumo_energia.st.error", mock_error)
+        monkeypatch.setattr("src.energy_consumptions.st.error", mock_error)
 
         # Executa função
         result = fetch_energy_consumption()
@@ -175,11 +178,11 @@ class TestEnergyConsumptionContract:
         def mock_api_request(method, endpoint, token=None, params=None):
             return mock_response
 
-        monkeypatch.setattr("src.consumo_energia.api_request", mock_api_request)
+        monkeypatch.setattr("src.energy_consumptions.api_request", mock_api_request)
 
         # Mock st.warning para verificar se foi chamado
         mock_warning = Mock()
-        monkeypatch.setattr("src.consumo_energia.st.warning", mock_warning)
+        monkeypatch.setattr("src.energy_consumptions.st.warning", mock_warning)
 
         # Executa função
         result = fetch_energy_consumption()
@@ -202,11 +205,11 @@ class TestEnergyConsumptionContract:
         def mock_api_request(method, endpoint, token=None, params=None):
             return mock_response
 
-        monkeypatch.setattr("src.consumo_energia.api_request", mock_api_request)
+        monkeypatch.setattr("src.energy_consumptions.api_request", mock_api_request)
 
         # Mock st.error para verificar se foi chamado
         mock_error = Mock()
-        monkeypatch.setattr("src.consumo_energia.st.error", mock_error)
+        monkeypatch.setattr("src.energy_consumptions.st.error", mock_error)
 
         # Executa função
         result = fetch_energy_consumption()
@@ -221,7 +224,7 @@ class TestEnergyConsumptionContract:
     def test_fetch_energy_consumption_optional_params_omitted(self, monkeypatch):
         """Verifica que parâmetros None não são incluídos na requisição."""
         captured_params = {}
-        
+
         def mock_api_request(method, endpoint, token=None, params=None):
             captured_params.update(params or {})
             mock_response = Mock()
@@ -229,15 +232,12 @@ class TestEnergyConsumptionContract:
             mock_response.json.return_value = []
             return mock_response
 
-        monkeypatch.setattr("src.consumo_energia.api_request", mock_api_request)
-        monkeypatch.setattr("src.consumo_energia.st.warning", Mock())
+        monkeypatch.setattr("src.energy_consumptions.api_request", mock_api_request)
+        monkeypatch.setattr("src.energy_consumptions.st.warning", Mock())
 
         # Executa com parâmetros None (devem ser omitidos)
         fetch_energy_consumption(
-            controller_id=None,
-            period=None,
-            start_date=None,
-            end_date=None
+            controller_id=None, period=None, start_date=None, end_date=None
         )
 
         # Validações - parâmetros None não devem estar na requisição
