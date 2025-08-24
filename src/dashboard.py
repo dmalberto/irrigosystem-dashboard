@@ -202,7 +202,7 @@ def show():
 
         if view_option == "Um sensor específico" and sensor_id_selection is not None:
             sensor_data = df[df["ID do Sensor"] == sensor_id_selection]
-            st.subheader(f"Estação: {estacao_nome} | Sensor ID: {sensor_id_selection}")
+            st.markdown(f"### Estação: {estacao_nome} | Sensor ID: {sensor_id_selection}")
 
             selected_variables = st.multiselect(
                 "Selecione as variáveis para plotar",
@@ -221,7 +221,7 @@ def show():
                 st.plotly_chart(fig, use_container_width=True)
 
         else:
-            st.subheader(f"Estação: {estacao_nome}")
+            st.markdown(f"### Estação: {estacao_nome}")
 
             selected_variables = st.multiselect(
                 "Selecione as variáveis para plotar",

@@ -1,46 +1,41 @@
 # src/energy_consumptions.py
-
+"""
+Consumo de Energia - Modernizado com UI Foundations v3
+ComponentLibrary, LoadingStates e design tokens aplicados.
+"""
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
 from api import api_request
-from src.controllers import get_controllers
+from src.ui_components import (
+    ComponentLibrary,
+    LoadingStates,
+    enhanced_empty_state,
+    controller_selector,
+)
 
 
 def selecionar_controlador():
-    """Componente de seleção de controlador
+    """Componente de seleção de controlador usando seletor padronizado
 
     Retorna: (controller_id, controller_name) ou (None, None) se nenhum selecionado
     """
     token = st.session_state.get("token", None)
     if not token:
-        st.error("Usuário não autenticado.")
+        ComponentLibrary.alert("Usuário não autenticado.", "error")
         return None, None
 
-    controllers = get_controllers(token)
-    if not controllers:
-        st.warning("Nenhum controlador cadastrado.")
-        return None, None
-
-    # Opção "Todos os Controladores" para não filtrar
-    controller_options = {"Todos os Controladores": None}
-    controller_options.update(
-        {
-            f"{controller['name']} (ID: {controller['id']})": controller["id"]
-            for controller in controllers
-        }
-    )
-
-    controller_choice = st.sidebar.selectbox(
+    # Usar seletor padronizado com opção "Todos"
+    controller_id, controller_name = controller_selector(
+        token,
         "Filtrar por Controlador (Opcional)",
-        controller_options.keys(),
-        key="energia_controller_selector",
+        include_all_option=True,
+        context="energy_consumption",
     )
-    controller_id = controller_options[controller_choice]
 
-    return controller_id, controller_choice
+    return controller_id, controller_name
 
 
 # Função para buscar dados de consumo de energia da API
@@ -391,70 +386,138 @@ def simulate_future_costs(
 
 # Função principal para exibir os relatórios de consumo de energia
 def show():
-    st.title("Relatórios de Consumo de Energia")
+    st.title("⚡ Relatórios de Consumo de Energia")
 
-    # Filtros de data
-    st.sidebar.header("Filtros de Data")
-    col1, col2 = st.sidebar.columns(2)
-    with col1:
-        start_date = st.sidebar.date_input(
-            "Data de Início", value=None, key="energia_start_date"
-        )
-    with col2:
-        end_date = st.sidebar.date_input(
-            "Data de Fim", value=None, key="energia_end_date"
-        )
+    # Filtros com layout melhorado
+    with st.expander("🔍 Filtros de Consulta", expanded=True):
+        col1, col2 = st.columns(2)
 
-    start_date_str = start_date.strftime("%Y-%m-%d") if start_date else None
-    end_date_str = end_date.strftime("%Y-%m-%d") if end_date else None
+        with col1:
+            start_date = st.date_input(
+                "Data de Início", value=None, key="energia_start_date"
+            )
 
-    # Filtro por controlador usando seletor
-    st.sidebar.header("Filtros por Controlador")
-    controller_id, controller_name = selecionar_controlador()
+        with col2:
+            end_date = st.date_input("Data de Fim", value=None, key="energia_end_date")
 
-    # Botão para buscar dados
-    if st.sidebar.button("Buscar Dados"):
-        # Buscar dados de consumo de energia
-        df_consumption = fetch_energy_consumption(
-            start_date=start_date_str,
-            end_date=end_date_str,
-            controller_id=controller_id,
-        )
+        start_date_str = start_date.strftime("%Y-%m-%d") if start_date else None
+        end_date_str = end_date.strftime("%Y-%m-%d") if end_date else None
 
-        # Buscar tarifas vigentes
-        tariffs = fetch_current_tariffs()
+        # Filtro por controlador usando seletor padronizado
+        controller_id, controller_name = selecionar_controlador()
 
+    # Botão para buscar dados com melhor visual
+    if st.button("📊 Buscar Dados de Consumo", type="primary"):
+        # Buscar dados com loading states melhorados
+        with LoadingStates.progress_with_status(
+            "Consultando dados de energia...", 100
+        ) as (progress, status, container):
+            progress.progress(30)
+            status.text("Buscando dados de consumo...")
+
+            df_consumption = fetch_energy_consumption(
+                start_date=start_date_str,
+                end_date=end_date_str,
+                controller_id=controller_id,
+            )
+
+            progress.progress(70)
+            status.text("Obtendo tarifas vigentes...")
+
+            tariffs = fetch_current_tariffs()
+
+            progress.progress(100)
+            status.text("Processando dados...")
+
+        # Cards informativos das tarifas
         if tariffs:
-            st.markdown("### Tarifas Vigentes")
-            st.markdown(
-                f"**Tarifa Diurna:** R${tariffs.get('daytimeTariff', 0):.4f} por kWh"
-            )
-            st.markdown(
-                f"**Tarifa Noturna:** R${tariffs.get('nighttimeTariff', 0):.4f} por kWh"
-            )
-            if tariffs.get("nighttimeDiscount", 0) > 0:
-                st.markdown(
-                    f"**Desconto Noturno:** {tariffs.get('nighttimeDiscount', 0):.1f}%"
+            st.markdown("### 💰 Tarifas Vigentes")
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                ComponentLibrary.metric_card(
+                    title="Tarifa Diurna",
+                    value=f"R$ {tariffs.get('daytimeTariff', 0):.4f}/kWh",
+                    icon="☀️",
+                )
+
+            with col2:
+                ComponentLibrary.metric_card(
+                    title="Tarifa Noturna",
+                    value=f"R$ {tariffs.get('nighttimeTariff', 0):.4f}/kWh",
+                    icon="🌙",
+                )
+
+            with col3:
+                discount = tariffs.get("nighttimeDiscount", 0)
+                ComponentLibrary.metric_card(
+                    title="Desconto Noturno",
+                    value=f"{discount:.1f}%" if discount > 0 else "N/A",
+                    icon="💸",
                 )
         else:
-            st.warning("Não foi possível obter as tarifas vigentes.")
+            ComponentLibrary.alert(
+                "Não foi possível obter as tarifas vigentes.", "warning"
+            )
 
         # Processar dados de consumo
         df_calculado = process_energy_consumption(df_consumption, tariffs)
 
         if not df_calculado.empty:
-            # Exibir cabeçalho com info do controlador selecionado
-            if controller_id:
-                st.markdown(f"**Controlador Selecionado:** {controller_name}")
+            # Card informativo do controlador selecionado
+            if controller_id and controller_name != "Todos os Controladores":
+                ComponentLibrary.card(
+                    title="⚙️ Controlador Selecionado",
+                    content=f"Dados filtrados para: **{controller_name}**",
+                    color="info",
+                )
 
-            # Exibir dados
-            st.subheader("Dados de Consumo e Custo")
-            # Usar a coluna formatada para exibição
+            # Análise resumida com cards
+            if (
+                "consumption" in df_calculado.columns
+                and "custo" in df_calculado.columns
+            ):
+                total_consumption = df_calculado["consumption"].sum()
+                total_cost = df_calculado["custo"].sum()
+                avg_cost = df_calculado["custo"].mean()
+
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    ComponentLibrary.metric_card(
+                        title="Consumo Total",
+                        value=f"{total_consumption:.2f} kWh",
+                        icon="⚡",
+                    )
+
+                with col2:
+                    ComponentLibrary.metric_card(
+                        title="Custo Total", value=f"R$ {total_cost:.2f}", icon="💰"
+                    )
+
+                with col3:
+                    ComponentLibrary.metric_card(
+                        title="Custo Médio",
+                        value=f"R$ {avg_cost:.2f} (por registro)",
+                        icon="📊",
+                    )
+
+                st.markdown("---")
+
+            # Exibir dados em tabela
+            st.markdown("### 📋 Dados Detalhados de Consumo")
             display_columns = [
                 "date_display" if col == "date" else col
                 for col in ["date", "consumption", "periodo", "custo"]
             ]
-            st.dataframe(df_calculado[display_columns])
+
+            # Filtrar apenas colunas que existem
+            available_columns = [
+                col for col in display_columns if col in df_calculado.columns
+            ]
+            if available_columns:
+                st.dataframe(df_calculado[available_columns], use_container_width=True)
 
             # Exibir gráficos
             display_graphs(df_calculado)
@@ -462,28 +525,61 @@ def show():
             # Exibir análise de custos
             display_cost_analysis(df_calculado)
         else:
-            st.warning("Nenhum dado disponível para os filtros selecionados.")
+            enhanced_empty_state(
+                title="Nenhum Dado de Consumo Encontrado",
+                description="Não há registros de consumo de energia para os filtros selecionados. Tente ajustar o período ou o controlador.",
+                icon="⚡",
+                action_button={
+                    "label": "🔄 Ajustar Filtros",
+                    "key": "adjust_energy_filters",
+                },
+            )
 
         st.markdown("---")
 
-    # Simulação de custos futuros
-    st.subheader("Simulação de Custos Futuros")
-    with st.form("Simular Custos"):
-        projected_consumption_diurno = st.number_input(
-            "Consumo Projetado Diurno (kWh)", min_value=0.0, step=1.0
-        )
-        projected_consumption_noturno = st.number_input(
-            "Consumo Projetado Noturno (kWh)", min_value=0.0, step=1.0
-        )
-        submitted = st.form_submit_button("Simular")
-        if submitted:
-            tariffs = fetch_current_tariffs()
-            if tariffs:
-                simulate_future_costs(
-                    tariffs, projected_consumption_diurno, projected_consumption_noturno
+    # Seção de simulação com melhor visual
+    st.markdown("---")
+    st.markdown("### 🔮 Simulação de Custos Futuros")
+
+    with st.expander("💡 Simular Consumo Projetado", expanded=False):
+        with st.form("Simular Custos"):
+            col1, col2 = st.columns(2)
+
+            with col1:
+                projected_consumption_diurno = st.number_input(
+                    "Consumo Projetado Diurno (kWh)",
+                    min_value=0.0,
+                    step=1.0,
+                    value=100.0,
+                    help="Consumo esperado durante o período diurno",
                 )
-            else:
-                st.error("Não é possível simular custos sem tarifas vigentes.")
+
+            with col2:
+                projected_consumption_noturno = st.number_input(
+                    "Consumo Projetado Noturno (kWh)",
+                    min_value=0.0,
+                    step=1.0,
+                    value=50.0,
+                    help="Consumo esperado durante o período noturno",
+                )
+
+            submitted = st.form_submit_button("🧮 Calcular Simulação", type="primary")
+
+            if submitted:
+                with LoadingStates.spinner_with_cancel("Calculando simulação..."):
+                    tariffs = fetch_current_tariffs()
+
+                if tariffs:
+                    simulate_future_costs(
+                        tariffs,
+                        projected_consumption_diurno,
+                        projected_consumption_noturno,
+                    )
+                else:
+                    ComponentLibrary.alert(
+                        "Não é possível simular custos sem tarifas vigentes. Verifique a configuração das tarifas.",
+                        "error",
+                    )
 
 
 if __name__ == "__main__":

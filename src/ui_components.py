@@ -37,7 +37,7 @@ def format_datetime_for_display(iso_string):
 
 
 def controller_selector(
-    token, label="Selecione o Controlador *", include_all_option=False
+    token, label="Selecione o Controlador *", include_all_option=False, context=""
 ):
     """Seletor padronizado de controladores conforme padrão 'Nome (ID: X)'."""
     # Import here to avoid circular dependency
@@ -60,7 +60,7 @@ def controller_selector(
         {f"{ctrl['name']} (ID: {ctrl['id']})": ctrl["id"] for ctrl in controllers}
     )
 
-    choice = st.selectbox(label, options.keys())
+    choice = st.selectbox(label, options.keys(), key=f"controller_selector_{context}_{hash(label)}")
     return options[choice], choice
 
 
@@ -159,6 +159,9 @@ def geographic_coordinates_input(lat_value=None, lon_value=None):
 
 def monetary_input(label, value=None, min_value=0.01, max_value=10.0, help_text=""):
     """Input padronizado para valores monetários."""
+    # Garantir que value nunca seja menor que min_value
+    if value is not None and value < min_value:
+        value = min_value
     return st.number_input(
         label,
         min_value=min_value,
@@ -172,19 +175,31 @@ def monetary_input(label, value=None, min_value=0.01, max_value=10.0, help_text=
 
 def percentage_input(label, value=None, min_value=0.0, max_value=100.0, help_text=""):
     """Input padronizado para percentuais."""
+    # Garantir que value nunca seja menor que min_value ou maior que max_value
+    if value is not None:
+        if value < min_value:
+            value = min_value
+        elif value > max_value:
+            value = max_value
     return st.number_input(
         label,
         min_value=min_value,
         max_value=max_value,
         step=0.1,
         format="%.1f",
-        value=value if value is not None else 0.0,
+        value=value if value is not None else min_value,
         help=help_text,
     )
 
 
 def power_input(label, value=None, min_value=1.0, max_value=50000.0, help_text=""):
     """Input padronizado para potências (W)."""
+    # Garantir que value nunca seja menor que min_value ou maior que max_value
+    if value is not None:
+        if value < min_value:
+            value = min_value
+        elif value > max_value:
+            value = max_value
     return st.number_input(
         label,
         min_value=min_value,
@@ -525,7 +540,7 @@ def station_selector(
         st.warning("Nenhuma estação disponível.")
         return None, None
 
-    choice = st.selectbox(label, options.keys())
+    choice = st.selectbox(label, options.keys(), key=f"station_selector_{hash(label)}")
     return options[choice], choice
 
 
@@ -538,7 +553,7 @@ def sensor_selector(
     """Seletor dependente de sensores - desabilitado até estação ser definida."""
 
     if not station_id:
-        st.selectbox(label, ["Selecione uma estação primeiro"], disabled=True)
+        st.selectbox(label, ["Selecione uma estação primeiro"], disabled=True, key=f"sensor_disabled_{hash(label)}")
         return None, None
 
     sensors = get_sensors_cached(token, cast_to_int64(station_id))
@@ -562,7 +577,7 @@ def sensor_selector(
         st.warning(f"Nenhum sensor disponível para a estação ID {station_id}.")
         return None, None
 
-    choice = st.selectbox(label, options.keys())
+    choice = st.selectbox(label, options.keys(), key=f"sensor_selector_{station_id}_{hash(label)}")
     return options[choice], choice
 
 
@@ -571,11 +586,12 @@ def valve_selector(
     controller_id: Optional[int],
     label: str = "Selecione a Válvula *",
     include_all_option: bool = False,
+    context: str = "",
 ) -> Tuple[Optional[int], Optional[str]]:
     """Seletor dependente de válvulas - desabilitado até controlador ser definido."""
 
     if not controller_id:
-        st.selectbox(label, ["Selecione um controlador primeiro"], disabled=True)
+        st.selectbox(label, ["Selecione um controlador primeiro"], disabled=True, key=f"valve_disabled_{context}_{hash(label)}")
         return None, None
 
     valves = get_valves_cached(token, cast_to_int64(controller_id))
@@ -601,7 +617,7 @@ def valve_selector(
         st.warning(f"Nenhuma válvula disponível para o controlador ID {controller_id}.")
         return None, None
 
-    choice = st.selectbox(label, options.keys())
+    choice = st.selectbox(label, options.keys(), key=f"valve_selector_{controller_id}_{context}_{hash(label)}")
     return options[choice], choice
 
 
@@ -631,6 +647,7 @@ def pagination_controls(
             options=[10, 15, 20, 50],
             index=1,  # Default 15
             help="Quantidade de itens por página (padrão: 15)",
+            key="pagination_size"
         )
 
     with col3:
@@ -639,6 +656,7 @@ def pagination_controls(
             options=["desc", "asc"],
             index=0,  # Default desc
             help="Ordem de classificação (padrão: decrescente)",
+            key="pagination_sort"
         )
 
     return {"page": cast_to_int32(page), "pageSize": cast_to_int32(size), "sort": sort}
@@ -1039,6 +1057,9 @@ class ComponentLibrary:
              icon: str = None, color: str = "primary"):
         """
         Card padronizado com título, conteúdo e ações opcionais
+        
+        actions: Lista de dicts com "label", "key", e opcionalmente "target_tab"
+        Exemplo: [{"label": "Ver Detalhes", "key": "view_details", "target_tab": "tab_details"}]
         """
         card_color = get_color(color)
         
@@ -1076,15 +1097,21 @@ class ComponentLibrary:
             # Conteúdo
             st.markdown(f'<div class="card-content">{content}</div>', unsafe_allow_html=True)
             
-            # Ações (botões)
+            # Ações (botões) - corrigido para Streamlit
             if actions:
                 st.markdown("<br>", unsafe_allow_html=True)
                 cols = st.columns(len(actions))
                 for i, action in enumerate(actions):
                     with cols[i]:
-                        if st.button(action["label"], key=action.get("key", f"action_{i}")):
-                            if action.get("callback"):
-                                action["callback"]()
+                        button_key = action.get("key", f"card_action_{i}")
+                        if st.button(action["label"], key=button_key):
+                            # Para Streamlit, usamos session_state em vez de callbacks
+                            if "target_tab" in action:
+                                st.session_state[f"navigate_to_{action['target_tab']}"] = True
+                            if "set_state" in action:
+                                st.session_state.update(action["set_state"])
+                            # Trigger rerun se necessário
+                            st.rerun()
             
             st.markdown('</div>', unsafe_allow_html=True)
     

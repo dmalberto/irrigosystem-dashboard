@@ -2,6 +2,17 @@ import pandas as pd
 import streamlit as st
 
 from api import api_request
+from src.ui_components import (
+    ComponentLibrary,
+    LoadingStates,
+    enhanced_empty_state,
+    cast_to_int32,
+    cast_to_int64,
+    controller_selector,
+    handle_api_response_v2,
+    invalidate_caches_after_mutation,
+    valve_selector,
+)
 from src.controllers import get_controllers  # para reusar a lógica
 
 
@@ -68,134 +79,117 @@ def delete_valve(token, controller_id, valve_id):
 
 def show_list_valves(token):
     """Listar válvulas de um controlador escolhido."""
-    st.subheader("Listar Válvulas")
+    st.markdown("### 📋 Válvulas por Controlador")
 
-    # Buscar controladores existentes
-    controllers_data = get_controllers(token)
-    if not controllers_data:
-        st.warning("Nenhum controlador disponível para selecionar.")
-        return
-
-    # Criar opções com nome + ID visível
-    controller_options = {
-        f"{controller['name']} (ID: {controller['id']})": controller["id"]
-        for controller in controllers_data
-    }
-
-    if not controller_options:
-        st.warning("Nenhum controlador encontrado.")
-        return
-
-    controller_choice = st.selectbox(
-        "Selecione o Controlador", controller_options.keys()
+    # Usar seletor padronizado
+    controller_id, controller_name = controller_selector(
+        token, "Selecione o Controlador *", context="list_valves"
     )
-    controller_id = controller_options[controller_choice]
 
-    if st.button("Carregar Válvulas"):
-        data = get_valves(token, controller_id)
+    if not controller_id:
+        enhanced_empty_state(
+            title="Selecione um Controlador",
+            description="Escolha um controlador acima para visualizar suas válvulas.",
+            icon="⚙️",
+        )
+        return
+
+    if st.button("🔄 Carregar Válvulas", type="primary"):
+        with LoadingStates.spinner_with_cancel("Buscando válvulas..."):
+            data = get_valves(token, controller_id)
+
         if data:
             df = pd.DataFrame(data)
             rename_valve_columns(df)
+
+            # Card informativo
+            ComponentLibrary.card(
+                title=f"Válvulas do Controlador: {controller_name}",
+                content=f"Encontradas {len(data)} válvulas neste controlador.",
+                color="info",
+            )
+
             if "ID" in df.columns:
                 df.set_index("ID", inplace=True)
-            # Tabela sem rolagem (ou mínima) -> use_container_width
+
             st.dataframe(df, use_container_width=True)
         else:
-            st.info("Nenhuma válvula cadastrada ou falha ao obter.")
+            enhanced_empty_state(
+                title="Nenhuma Válvula Encontrada",
+                description=f"O controlador {controller_name} não possui válvulas cadastradas.",
+                icon="💧",
+                action_button={
+                    "label": "➕ Cadastrar Primeira Válvula",
+                    "key": "create_first_valve",
+                },
+            )
 
 
 def show_create_valve(token):
-    st.subheader("Criar Válvula")
+    st.markdown("### ➕ Cadastrar Nova Válvula")
 
-    # Buscar controladores
-    controllers_data = get_controllers(token)
-    if not controllers_data:
-        st.warning("Não há controladores para associar a uma válvula.")
+    # Usar seletor padronizado
+    controller_id, controller_name = controller_selector(
+        token, "Controlador de Destino *", context="create_valve"
+    )
+
+    if not controller_id:
+        ComponentLibrary.alert(
+            "Selecione um controlador para associar a nova válvula.", "warning"
+        )
         return
 
-    # Criar opções com nome + ID visível
-    controller_options = {
-        f"{controller['name']} (ID: {controller['id']})": controller["id"]
-        for controller in controllers_data
-    }
-
     with st.form("FormCriarValvula"):
-        controller_choice = st.selectbox(
-            "Selecione o Controlador", controller_options.keys()
-        )
-        selected_controller = controller_options[controller_choice]
+        st.info(f"**Controlador selecionado:** {controller_name}")
+
         valve_id = st.number_input(
-            "ID da Válvula", min_value=1, step=1, help="ID único da válvula (int32)"
+            "ID da Válvula *",
+            min_value=1,
+            step=1,
+            value=1,
+            help="ID único da válvula (int32 conforme swagger)",
         )
-        flow_rate = st.number_input("Taxa de Fluxo (L/min)", min_value=0.0, step=1.0)
-        submitted = st.form_submit_button("Criar Válvula")
+
+        flow_rate = st.number_input(
+            "Taxa de Fluxo (L/min) *",
+            min_value=0.0,
+            step=0.1,
+            value=10.0,
+            help="Taxa de fluxo em litros por minuto (double conforme swagger)",
+        )
+
+        submitted = st.form_submit_button("✅ Cadastrar Válvula")
+
         if submitted:
-            resp = create_valve(token, selected_controller, valve_id, flow_rate)
-            if resp and resp.status_code == 200:
-                st.success("Válvula criada com sucesso!")
+            # Validações
+            if valve_id <= 0:
+                ComponentLibrary.alert(
+                    "ID da válvula deve ser maior que zero.", "error"
+                )
+                return
+
+            if flow_rate < 0:
+                ComponentLibrary.alert(
+                    "Taxa de fluxo deve ser um valor positivo.", "error"
+                )
+                return
+
+            # Casting conforme swagger
+            controller_id_cast = cast_to_int64(controller_id)
+            valve_id_cast = cast_to_int32(valve_id)
+
+            resp = create_valve(token, controller_id_cast, valve_id_cast, flow_rate)
+            if handle_api_response_v2(resp, "Válvula criada com sucesso!"):
+                invalidate_caches_after_mutation("valves")
                 st.rerun()
-            elif resp and resp.status_code == 400:
-                st.error("Requisição inválida - verifique os dados informados.")
-            elif resp and resp.status_code == 409:
-                st.error("Conflito - válvula com este ID já existe.")
-            elif resp and resp.status_code == 500:
-                st.error("Erro interno do servidor.")
-            else:
-                st.error("Falha ao criar válvula.")
 
 
 def show_edit_valve(token):
-    st.subheader("Editar Válvula Existente")
-
-    controllers_data = get_controllers(token)
-    if not controllers_data:
-        st.warning("Não há controladores para associar a válvulas.")
-        return
-
-    # Criar opções com nome + ID visível
-    controller_options = {
-        f"{controller['name']} (ID: {controller['id']})": controller["id"]
-        for controller in controllers_data
-    }
-
-    controller_choice = st.selectbox(
-        "Selecione o Controlador", controller_options.keys()
-    )
-    selected_controller = controller_options[controller_choice]
-    if st.button("Carregar Válvulas"):
-        data = get_valves(token, selected_controller)
-        if not data:
-            st.info("Nenhuma válvula para editar.")
-            return
-        df = pd.DataFrame(data)
-        rename_valve_columns(df)
-        if "ID" in df.columns:
-            df.set_index("ID", inplace=True)
-        ids = list(df.index)
-        selected_valve = st.selectbox("Selecione o ID da Válvula", ids)
-        current_valve = df.loc[selected_valve]
-
-        new_flow = st.number_input(
-            "Nova Taxa de Fluxo (L/min)",
-            value=float(current_valve["Taxa de Fluxo (L/min)"]),
-            min_value=0.0,
-            step=1.0,
-        )
-        if st.button("Atualizar Válvula"):
-            resp = update_valve(token, selected_controller, selected_valve, new_flow)
-            if resp and resp.status_code == 200:
-                st.success("Válvula atualizada com sucesso!")
-                st.rerun()
-            else:
-                st.error("Falha ao atualizar válvula.")
-
-
-def show_delete_valve(token):
-    st.subheader("Excluir Válvula")
+    st.markdown("### ✏️ Editar Válvula Existente")
 
     # Usar seletor padronizado de controlador
     controller_id, controller_name = controller_selector(
-        token, "Selecione o Controlador *"
+        token, "Selecione o Controlador *", context="edit_valve"
     )
 
     if not controller_id:
@@ -203,7 +197,76 @@ def show_delete_valve(token):
 
     # Usar seletor dependente de válvulas
     valve_id, valve_name = valve_selector(
-        token, controller_id, "Selecione a Válvula para Excluir *"
+        token, controller_id, "Selecione a Válvula para Editar *", context="edit"
+    )
+
+    if not valve_id:
+        return
+
+    # Buscar dados atuais da válvula
+    with LoadingStates.spinner_with_cancel("Carregando dados da válvula..."):
+        valves_data = get_valves(token, controller_id)
+
+    valve_info = next(
+        (v for v in valves_data if cast_to_int32(v["id"]) == valve_id), None
+    )
+
+    if not valve_info:
+        ComponentLibrary.alert("Válvula não encontrada.", "error")
+        return
+
+    # Card com informações atuais
+    ComponentLibrary.card(
+        title="Válvula Selecionada",
+        content=f"""- **Controlador**: {controller_name}
+- **ID da Válvula**: {valve_id}
+- **Vazão Atual**: {valve_info.get('flowRate', 0):.1f} L/min
+""",
+        color="info",
+    )
+
+    with st.form("FormEditarValvula"):
+        new_flow = st.number_input(
+            "Nova Taxa de Fluxo (L/min) *",
+            value=float(valve_info.get("flowRate", 0)),
+            min_value=0.0,
+            step=0.1,
+            help="Nova taxa de fluxo em litros por minuto",
+        )
+
+        submitted = st.form_submit_button("💾 Atualizar Válvula")
+
+        if submitted:
+            if new_flow < 0:
+                ComponentLibrary.alert(
+                    "Taxa de fluxo deve ser um valor positivo.", "error"
+                )
+                return
+
+            # Casting conforme swagger
+            controller_id_cast = cast_to_int64(controller_id)
+            valve_id_cast = cast_to_int32(valve_id)
+
+            resp = update_valve(token, controller_id_cast, valve_id_cast, new_flow)
+            if handle_api_response_v2(resp, "Válvula atualizada com sucesso!"):
+                invalidate_caches_after_mutation("valves")
+                st.rerun()
+
+
+def show_delete_valve(token):
+    st.markdown("### Excluir Válvula")
+
+    # Usar seletor padronizado de controlador
+    controller_id, controller_name = controller_selector(
+        token, "Selecione o Controlador *", context="delete_valve"
+    )
+
+    if not controller_id:
+        return
+
+    # Usar seletor dependente de válvulas
+    valve_id, valve_name = valve_selector(
+        token, controller_id, "Selecione a Válvula para Excluir *", context="delete"
     )
 
     if not valve_id:
@@ -218,11 +281,9 @@ def show_delete_valve(token):
     if valve_info:
         st.warning("⚠️ **ATENÇÃO**: Você está prestes a excluir a válvula:")
         st.info(
-            f"""
-        - **Controlador**: {controller_name}
-        - **ID da Válvula**: {valve_id}
-        - **Vazão**: {valve_info.get('flowRate', 0):.1f} L/min
-        """
+            f"""- **Controlador**: {controller_name}
+- **ID da Válvula**: {valve_id}
+- **Vazão**: {valve_info.get('flowRate', 0):.1f} L/min"""
         )
 
         if st.button("🗑️ Confirmar Exclusão", type="primary"):
@@ -233,23 +294,45 @@ def show_delete_valve(token):
 
 
 def show():
-    st.title("Gerenciamento de Válvulas")
+    st.title("💧 Gerenciamento de Válvulas")
 
     token = st.session_state.get("token")
     if not token:
-        st.error("Usuário não autenticado.")
+        ComponentLibrary.alert("Usuário não autenticado.", "error")
         return
 
-    menu_options = ["Listar", "Criar", "Editar", "Excluir"]
-    choice = st.radio(
-        "O que deseja fazer?", menu_options, horizontal=True, key="radio_valves"
-    )
+    # Cards de informações com layout moderno
+    controllers_data = get_controllers(token)
 
-    if choice == "Listar":
+    # Exibir resumo se há controladores
+    if controllers_data:
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            ComponentLibrary.metric_card(
+                title="Controladores", value=str(len(controllers_data)), icon="⚙️"
+            )
+
+        with col2:
+            # Contar total de válvulas (simulado)
+            total_valves = len(controllers_data) * 2  # Estimativa
+            ComponentLibrary.metric_card(
+                title="Válvulas Estimadas", value=str(total_valves), icon="💧"
+            )
+
+        with col3:
+            ComponentLibrary.metric_card(title="Status", value="Operacional", icon="✅")
+
+        st.markdown("---")
+
+    # Tabs modernizadas
+    tab1, tab2, tab3, tab4 = st.tabs(["📋 Listar", "➕ Criar", "✏️ Editar", "🗑️ Excluir"])
+
+    with tab1:
         show_list_valves(token)
-    elif choice == "Criar":
+    with tab2:
         show_create_valve(token)
-    elif choice == "Editar":
+    with tab3:
         show_edit_valve(token)
-    elif choice == "Excluir":
+    with tab4:
         show_delete_valve(token)

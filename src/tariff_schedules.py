@@ -1,4 +1,8 @@
 # src/tariff_schedules.py
+"""
+Gerenciamento de Tarifas - Modernizado com UI Foundations v3
+FormBuilder, ComponentLibrary e design tokens aplicados.
+"""
 
 from datetime import date, time
 
@@ -6,8 +10,15 @@ import pandas as pd
 import streamlit as st
 
 from api import api_request
-from src.ui_components import (format_datetime_for_api, handle_api_response,
-                               monetary_input, percentage_input)
+from src.ui_components import (
+    ComponentLibrary,
+    LoadingStates,
+    enhanced_empty_state,
+    format_datetime_for_api,
+    handle_api_response_v2,
+    monetary_input,
+    percentage_input
+)
 
 
 def rename_tariff_columns(df: pd.DataFrame):
@@ -140,7 +151,7 @@ def tariff_selector(token, label="Selecione a Tarifa *"):
         st.warning("Nenhuma tarifa disponível.")
         return None, None
 
-    choice = st.selectbox(label, tariff_options.keys())
+    choice = st.selectbox(label, tariff_options.keys(), key=f"tariff_selector_{label.replace(' ', '_').lower()}")
     selected_id = tariff_options[choice]
 
     # Retornar objeto completo da tarifa
@@ -166,56 +177,96 @@ def validate_tariff_times(day_start, day_end, night_start, night_end):
 
 
 def show_current_tariff(token):
-    """Exibe a tarifa atual de forma amigável."""
-    st.subheader("Tarifa Atual")
+    """Exibe a tarifa atual de forma amigável com ComponentLibrary."""
+    st.markdown("### 🏷️ Tarifa Vigente")
 
-    current_data = get_current_tariff(token)
+    with LoadingStates.spinner_with_cancel("Carregando tarifa atual..."):
+        current_data = get_current_tariff(token)
 
     if current_data and "id" in current_data:
+        # Cards de métricas com ComponentLibrary
         col1, col2, col3 = st.columns(3)
+        
         with col1:
-            # st.metric(label, value, delta=None, delta_color="normal", help=None, label_visibility="visible", border=False)
-            st.metric(
-                label="Tarifa Diurna (R$)",
-                value=current_data["daytimeTariff"],
-                help="Valor aplicado no período diurno.",
+            ComponentLibrary.metric_card(
+                title="Tarifa Diurna",
+                value=f"R$ {current_data['daytimeTariff']:.4f}/kWh",
+                icon="☀️"
             )
+        
         with col2:
-            st.metric(
-                label="Tarifa Noturna (R$)",
-                value=current_data["nighttimeTariff"],
-                help="Valor aplicado no período noturno.",
+            ComponentLibrary.metric_card(
+                title="Tarifa Noturna",
+                value=f"R$ {current_data['nighttimeTariff']:.4f}/kWh",
+                icon="🌙"
             )
+        
         with col3:
-            st.metric(
-                label="Desconto Noturno",
-                value=current_data["nighttimeDiscount"],
-                help="Porcentagem de desconto aplicada no período noturno.",
+            ComponentLibrary.metric_card(
+                title="Desconto Noturno",
+                value=f"{current_data['nighttimeDiscount']:.1f}%",
+                delta="Economia",
+                icon="💸"
             )
-        st.write(f"**Início (Diurno)**: {current_data['daytimeStart']}")
-        st.write(f"**Fim (Diurno)**: {current_data['daytimeEnd']}")
-        st.write(f"**Início (Noturno)**: {current_data['nighttimeStart']}")
-        st.write(f"**Fim (Noturno)**: {current_data['nighttimeEnd']}")
+        
+        # Card com informações dos horários
+        ComponentLibrary.card(
+            title="🕐 Horários de Vigência",
+            content=f"""**Período Diurno:**  
+• Início: {current_data['daytimeStart']}  
+• Fim: {current_data['daytimeEnd']}
+
+**Período Noturno:**  
+• Início: {current_data['nighttimeStart']}  
+• Fim: {current_data['nighttimeEnd']}""",
+            color="info"
+        )
 
     else:
-        st.info("Nenhuma tarifa atual encontrada.")
+        enhanced_empty_state(
+            title="Nenhuma Tarifa Vigente",
+            description="Não há tarifas configuradas como vigentes no sistema. Crie uma nova tarifa para começar.",
+            icon="💰",
+            action_button={
+                "label": "➕ Criar Primeira Tarifa",
+                "key": "create_first_tariff"
+            }
+        )
 
 
 def show_list_tariffs(token):
-    """Lista todas as tarifas em formato de tabela."""
-    st.subheader("Listagem de Tarifas")
+    """Lista todas as tarifas em formato de tabela com ComponentLibrary."""
+    st.markdown("### 📋 Tarifas Cadastradas")
+    
     all_tariffs = get_all_tariffs(token)
+    
     if all_tariffs:
+        # Card informativo
+        ComponentLibrary.card(
+            title="📋 Resumo das Tarifas",
+            content=f"Total de {len(all_tariffs)} tarifa(s) cadastrada(s) no sistema.",
+            color="info"
+        )
+        
         df = pd.DataFrame(all_tariffs)
         rename_tariff_columns(df)
-        st.dataframe(df.set_index("ID"))
+        st.dataframe(df.set_index("ID"), use_container_width=True)
     else:
-        st.info("Nenhuma tarifa cadastrada.")
+        enhanced_empty_state(
+            title="Nenhuma Tarifa Cadastrada",
+            description="O sistema ainda não possui tarifas cadastradas. Crie uma nova tarifa para definir os valores de consumo de energia.",
+            icon="💰",
+            action_button={
+                "label": "➕ Cadastrar Primeira Tarifa",
+                "key": "create_first_tariff_from_list"
+            }
+        )
 
 
 def show_create_tariff(token):
-    """Formulário para criar nova tarifa."""
-    st.subheader("Criar Nova Tarifa")
+    """Formulário para criar nova tarifa usando FormBuilder."""
+    st.markdown("### ➕ Cadastrar Nova Tarifa")
+    
     with st.form("CriarTarifa"):
         # Data usando date_input
         date_val = st.date_input(
@@ -270,14 +321,14 @@ def show_create_tariff(token):
             help_text="Percentual de desconto aplicado no período noturno",
         )
 
-        submitted_new = st.form_submit_button("Criar Tarifa")
+        submitted_new = st.form_submit_button("✅ Cadastrar Tarifa")
         if submitted_new:
             # Validar horários
             times_valid, times_msg = validate_tariff_times(
                 daytime_start, daytime_end, nighttime_start, nighttime_end
             )
             if not times_valid:
-                st.error(times_msg)
+                ComponentLibrary.alert(times_msg, "error")
                 return
 
             # Preparar dados para API
@@ -293,18 +344,22 @@ def show_create_tariff(token):
             }
 
             resp = create_tariff(token, data)
-            handle_api_response(resp, "Tarifa criada com sucesso!")
-            if resp and 200 <= resp.status_code < 300:
+            if handle_api_response_v2(resp, "Tarifa criada com sucesso!"):
                 st.rerun()
 
 
 def show_edit_tariff(token):
     """Formulário para editar uma tarifa existente."""
-    st.subheader("Editar Tarifa Existente")
+    st.markdown("### ✏️ Editar Tarifa Existente")
 
     # Usar seletor padronizado
-    selected_id, tariff_obj = tariff_selector(token, "Selecione a Tarifa para Editar")
+    selected_id, tariff_obj = tariff_selector(token, "Selecione a Tarifa para Editar *")
     if not tariff_obj:
+        enhanced_empty_state(
+            title="Selecione uma Tarifa",
+            description="Escolha uma tarifa cadastrada acima para editar suas informações.",
+            icon="✏️"
+        )
         return
 
     with st.form("EditarTarifa"):
@@ -362,10 +417,18 @@ def show_edit_tariff(token):
                 help="Horário de fim do período noturno",
             )
 
-        # Valores monetários
+        # Função helper para parsing seguro de valores
+        def safe_float_parse(value, default=0.01):
+            try:
+                parsed_value = float(value)
+                return parsed_value if parsed_value >= 0 else default
+            except (ValueError, TypeError):
+                return default
+
+        # Valores monetários com parsing seguro
         daytime_tariff = monetary_input(
             "Tarifa Diurna (R$/kWh) *",
-            value=float(tariff_obj["daytimeTariff"]),
+            value=safe_float_parse(tariff_obj["daytimeTariff"], 0.01),
             min_value=0.01,
             max_value=5.0,
             help_text="Valor da tarifa no período diurno",
@@ -373,7 +436,7 @@ def show_edit_tariff(token):
 
         nighttime_tariff = monetary_input(
             "Tarifa Noturna (R$/kWh) *",
-            value=float(tariff_obj["nighttimeTariff"]),
+            value=safe_float_parse(tariff_obj["nighttimeTariff"], 0.01),
             min_value=0.01,
             max_value=5.0,
             help_text="Valor da tarifa no período noturno",
@@ -381,18 +444,18 @@ def show_edit_tariff(token):
 
         nighttime_discount = percentage_input(
             "Desconto Noturno (%)",
-            value=float(tariff_obj["nighttimeDiscount"]),
+            value=safe_float_parse(tariff_obj["nighttimeDiscount"], 0.0),
             help_text="Percentual de desconto aplicado no período noturno",
         )
 
-        submitted_edit = st.form_submit_button("Atualizar Tarifa")
+        submitted_edit = st.form_submit_button("💾 Atualizar Tarifa")
         if submitted_edit:
             # Validar horários
             times_valid, times_msg = validate_tariff_times(
                 daytime_start, daytime_end, nighttime_start, nighttime_end
             )
             if not times_valid:
-                st.error(times_msg)
+                ComponentLibrary.alert(times_msg, "error")
                 return
 
             data_edit = {
@@ -408,72 +471,199 @@ def show_edit_tariff(token):
             }
 
             resp = update_tariff(token, selected_id, data_edit)
-            handle_api_response(resp, "Tarifa atualizada com sucesso!")
-            if resp and 200 <= resp.status_code < 300:
+            if handle_api_response_v2(resp, "Tarifa atualizada com sucesso!"):
                 st.rerun()
 
 
 def show_delete_tariff(token):
     """Formulário para excluir uma tarifa."""
-    st.subheader("Excluir Tarifa Existente")
+    st.markdown("### 🗑️ Excluir Tarifa Existente")
 
     # Usar seletor padronizado
-    selected_id, tariff_obj = tariff_selector(token, "Selecione a Tarifa para Excluir")
+    selected_id, tariff_obj = tariff_selector(token, "Selecione a Tarifa para Excluir *")
     if not tariff_obj:
+        enhanced_empty_state(
+            title="Selecione uma Tarifa",
+            description="Escolha uma tarifa cadastrada acima para excluir do sistema.",
+            icon="🗑️"
+        )
         return
 
-    # Mostrar informações da tarifa selecionada
-    st.warning("⚠️ **ATENÇÃO**: Você está prestes a excluir a tarifa:")
-    st.info(
-        f"""
-    - **Data**: {tariff_obj['date'][:10]}
-    - **ID**: {tariff_obj['id']}
-    - **Tarifa Diurna**: R$ {tariff_obj['daytimeTariff']:.4f}/kWh
-    - **Tarifa Noturna**: R$ {tariff_obj['nighttimeTariff']:.4f}/kWh
-    - **Desconto Noturno**: {tariff_obj['nighttimeDiscount']:.1f}%
-    """
+    # Mostrar informações da tarifa selecionada com ComponentLibrary
+    ComponentLibrary.alert(
+        "⚠️ **ATENÇÃO**: Você está prestes a excluir permanentemente esta tarifa do sistema.",
+        "warning"
+    )
+    
+    ComponentLibrary.card(
+        title="🗑️ Tarifa a ser Excluída",
+        content=f"""- **Data de Vigência**: {tariff_obj['date'][:10]}
+- **ID**: {tariff_obj['id']}
+- **Tarifa Diurna**: R$ {tariff_obj['daytimeTariff']:.4f}/kWh
+- **Tarifa Noturna**: R$ {tariff_obj['nighttimeTariff']:.4f}/kWh
+- **Desconto Noturno**: {tariff_obj['nighttimeDiscount']:.1f}%""",
+        color="error"
     )
 
-    if st.button("🗑️ Confirmar Exclusão", type="primary"):
-        resp = delete_tariff(token, selected_id)
-        handle_api_response(resp, "Tarifa excluída com sucesso!")
-        if resp and 200 <= resp.status_code < 300:
-            st.rerun()
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:  # Centralizar o botão
+        if st.button("🗑️ Confirmar Exclusão", type="primary"):
+            with LoadingStates.spinner_with_cancel("Excluindo tarifa..."):
+                resp = delete_tariff(token, selected_id)
+                
+            if handle_api_response_v2(resp, "Tarifa excluída com sucesso!"):
+                st.rerun()
+
+
+def simulate_future_costs(tariffs, projected_consumption_diurno, projected_consumption_noturno):
+    """Simula custos futuros usando tarifas do OpenAPI."""
+    # Usar campos corretos do OpenAPI
+    diurna = tariffs.get("daytimeTariff", 0)
+    noturna = tariffs.get("nighttimeTariff", 0)
+    desconto = tariffs.get("nighttimeDiscount", 0)
+
+    # Aplicar desconto na tarifa noturna se especificado
+    tarifa_noturna_com_desconto = noturna * (1 - desconto / 100)
+
+    custo_diurno = projected_consumption_diurno * diurna
+    custo_noturno = projected_consumption_noturno * tarifa_noturna_com_desconto
+    custo_total = custo_diurno + custo_noturno
+
+    # Resultados em cards visuais
+    st.markdown("### 📊 Resultados da Simulação")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        ComponentLibrary.metric_card(
+            title="Custo Diurno",
+            value=f"R$ {custo_diurno:.2f}",
+            delta=f"{projected_consumption_diurno} kWh",
+            icon="☀️"
+        )
+    
+    with col2:
+        ComponentLibrary.metric_card(
+            title="Custo Noturno", 
+            value=f"R$ {custo_noturno:.2f}",
+            delta=f"{projected_consumption_noturno} kWh",
+            icon="🌙"
+        )
+    
+    with col3:
+        ComponentLibrary.metric_card(
+            title="Custo Total",
+            value=f"R$ {custo_total:.2f}",
+            delta=f"{projected_consumption_diurno + projected_consumption_noturno} kWh total",
+            icon="💰"
+        )
+    
+    # Detalhes da simulação
+    ComponentLibrary.card(
+        title="💡 Detalhes da Simulação",
+        content=f"""
+        **Tarifa Diurna:** R$ {diurna:.4f} por kWh
+        **Tarifa Noturna:** R$ {noturna:.4f} por kWh
+        {f'**Desconto Noturno:** {desconto:.1f}%' if desconto > 0 else ''}
+        {f'**Tarifa Noturna com Desconto:** R$ {tarifa_noturna_com_desconto:.4f} por kWh' if desconto > 0 else ''}
+        
+        **Economia Noturna:** R$ {(projected_consumption_noturno * noturna) - custo_noturno:.2f}
+        **% Economia:** {((projected_consumption_noturno * noturna) - custo_noturno) / (custo_total + ((projected_consumption_noturno * noturna) - custo_noturno)) * 100:.1f}%
+        """,
+        color="info"
+    )
+
+
+def show_simulation(token):
+    """Simulação de custos de energia baseada nas tarifas cadastradas."""
+    st.markdown("### 🔮 Simulação de Custos de Energia")
+    
+    ComponentLibrary.card(
+        title="ℹ️ Como Funciona a Simulação",
+        content="""
+        Informe o consumo projetado de energia nos períodos diurno e noturno para calcular 
+        o custo estimado baseado na tarifa vigente atual. A simulação considera descontos
+        noturnos quando aplicáveis.
+        """,
+        color="info"
+    )
+
+    with st.form("SimulacaoTarifas"):
+        st.markdown("### Parâmetros da Simulação")
+        
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("#### ☀️ Período Diurno")
+            projected_consumption_diurno = st.number_input(
+                "Consumo Projetado Diurno (kWh)",
+                min_value=0.0,
+                step=1.0,
+                value=100.0,
+                help="Consumo esperado durante o período diurno",
+            )
+
+        with col2:
+            st.markdown("#### 🌙 Período Noturno")
+            projected_consumption_noturno = st.number_input(
+                "Consumo Projetado Noturno (kWh)",
+                min_value=0.0,
+                step=1.0,
+                value=50.0,
+                help="Consumo esperado durante o período noturno",
+            )
+
+        submitted = st.form_submit_button("🧮 Calcular Simulação", type="primary")
+
+        if submitted:
+            with LoadingStates.spinner_with_cancel("Calculando simulação..."):
+                tariffs = get_current_tariff(token)
+
+            if tariffs and "daytimeTariff" in tariffs:
+                simulate_future_costs(
+                    tariffs,
+                    projected_consumption_diurno,
+                    projected_consumption_noturno,
+                )
+            else:
+                ComponentLibrary.alert(
+                    "Não é possível simular custos sem tarifas vigentes. Configure uma tarifa atual na aba 'Tarifa Atual' primeiro.",
+                    "error",
+                )
 
 
 def show():
-    st.title("Gerenciamento de Tarifas")
+    st.title("💰 Gerenciamento de Tarifas")
 
     token = st.session_state.get("token")
     if not token:
-        st.error("Usuário não autenticado.")
+        ComponentLibrary.alert("Usuário não autenticado.", "error")
         return
 
-    # Escolha da "subpágina"
-    # Opções em português e mais amigáveis
-    menu_options = [
-        "Tarifa Atual",
-        "Listar Tarifas",
-        "Criar Tarifa",
-        "Editar Tarifa",
-        "Excluir Tarifa",
-    ]
-    choice = st.radio("O que deseja fazer?", menu_options, horizontal=True)
-
-    if choice == "Tarifa Atual":
+    # Tabs modernizadas
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "🏷️ Tarifa Atual",
+        "📋 Listar Tarifas", 
+        "🔮 Simulação",
+        "➕ Criar Tarifa",
+        "✏️ Editar Tarifa",
+        "🗑️ Excluir Tarifa"
+    ])
+    
+    with tab1:
         show_current_tariff(token)
-
-    elif choice == "Listar Tarifas":
+    with tab2:
         show_list_tariffs(token)
-
-    elif choice == "Criar Tarifa":
+    with tab3:
+        show_simulation(token)
+    with tab4:
         show_create_tariff(token)
-
-    elif choice == "Editar Tarifa":
+    with tab5:
         show_edit_tariff(token)
-
-    elif choice == "Excluir Tarifa":
+    with tab6:
         show_delete_tariff(token)
+
+    pass  # O código tabs já executa as funções diretamente
 
 
 if __name__ == "__main__":

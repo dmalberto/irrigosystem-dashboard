@@ -6,8 +6,8 @@ load_dotenv()
 # Importações dos módulos
 import src.controller_activations as controller_activations
 import src.controllers as controllers
+import src.consumptions as consumptions
 import src.dashboard as dashboard
-import src.energy_consumptions as energy_consumptions
 import src.health as health
 import src.measurement_reports as measurement_reports
 import src.measurements as measurements
@@ -15,10 +15,11 @@ import src.monitoring_stations as monitoring_stations
 import src.tariff_schedules as tariff_schedules
 import src.users as users
 import src.valves as valves
-import src.water_consumptions as water_consumptions
+
 # Design system
 from src.design_tokens import DesignTokens, generate_button_styles
 from src.ui_components import ComponentLibrary
+
 # Exemplo da sua função de login/logout
 from login import login, logout
 
@@ -143,99 +144,73 @@ def main():
         if st.button("Sair", key="logout", help="Clique para sair do sistema"):
             logout()
 
-    # ---------- SISTEMA DE NAVEGAÇÃO CATEGORIZADO ----------
-    
-    # Definir categorias e páginas
-    MENU_CATEGORIES = {
-        "📊 Monitoramento": {
-            "icon": "bar-chart-line",
-            "pages": ["Dashboard", "Medições", "Relatórios de Medições"],
-            "modules": ["dashboard", "measurements", "measurement_reports"]
+    # ---------- MENU DE NAVEGAÇÃO ----------
+
+    # Menu horizontal original com todas as opções
+    app_mode = option_menu(
+        menu_title=None,
+        options=[
+            "Dashboard",
+            "Medições",
+            "Relatórios de Medições",
+            "Controladores",
+            "Válvulas",
+            "Ativações de Bomba",
+            "Estações de Monitoramento",
+            "Consumos",
+            "Tarifas",
+            "Usuários",
+        ],
+        icons=[
+            "house",
+            "speedometer2",
+            "file-earmark-bar-graph",
+            "cpu",
+            "water",
+            "power",
+            "broadcast",
+            "bar-chart-line",
+            "currency-dollar",
+            "people",
+        ],
+        default_index=0,
+        orientation="horizontal",
+        styles={
+            "container": {
+                "background-color": MENU_BACKGROUND_COLOR,
+                "border-radius": "10px",
+                "padding": "10px 0",
+                "margin-bottom": "20px",
+                "box-shadow": "0 2px 4px rgba(0,0,0,0.1)",
+            },
+            "nav-link": {
+                "font-size": "14px",
+                "font-weight": "500",
+                "color": TEXT_COLOR,
+                "border-radius": "8px",
+                "padding": "8px 12px",
+                "margin": "0 2px",
+                "text-align": "center",
+                "transition": "all 0.2s ease",
+            },
+            "nav-link:hover": {
+                "background-color": MENU_HOVER_COLOR,
+                "color": PRIMARY_COLOR,
+            },
+            "nav-link-selected": {
+                "background-color": PRIMARY_COLOR,
+                "color": SECONDARY_COLOR,
+                "font-weight": "600",
+            },
         },
-        "🎮 Controle": {
-            "icon": "sliders", 
-            "pages": ["Controladores", "Válvulas", "Ativações de Bomba"],
-            "modules": ["controllers", "valves", "controller_activations"]
-        },
-        "⚡ Consumo": {
-            "icon": "lightning-charge",
-            "pages": ["Consumo de Energia", "Consumo de Água"],
-            "modules": ["energy_consumptions", "water_consumptions"]
-        },
-        "⚙️ Configuração": {
-            "icon": "gear",
-            "pages": ["Estações de Monitoramento", "Tarifas", "Usuários"],
-            "modules": ["monitoring_stations", "tariff_schedules", "users"]
-        }
-    }
-    
-    # Navegação com tabs categorizadas  
-    category_tabs = st.tabs(list(MENU_CATEGORIES.keys()))
-    
-    app_mode = None
-    selected_module = None
-    
-    for i, (category, config) in enumerate(MENU_CATEGORIES.items()):
-        with category_tabs[i]:
-            # Menu horizontal dentro de cada categoria
-            if config["pages"]:
-                # Dashboard sempre primeiro na categoria Monitoramento
-                default_idx = 0
-                page_selected = option_menu(
-                    menu_title=None,
-                    options=config["pages"],
-                    icons=["house" if page == "Dashboard" else config["icon"] for page in config["pages"]],
-                    default_index=default_idx,
-                    orientation="horizontal",
-                    styles={
-                        "container": {
-                            "background-color": DesignTokens.COLORS["background"]["secondary"],
-                            "border-radius": DesignTokens.RADIUS["lg"],
-                            "padding": DesignTokens.SPACING["3"],
-                            "margin-bottom": DesignTokens.SPACING["4"],
-                            "box-shadow": DesignTokens.SHADOWS["base"],
-                        },
-                        "nav-link": {
-                            "font-family": DesignTokens.TYPOGRAPHY["font_families"]["primary"],
-                            "font-size": DesignTokens.TYPOGRAPHY["sizes"]["sm"],
-                            "font-weight": DesignTokens.TYPOGRAPHY["weights"]["medium"],
-                            "color": DesignTokens.COLORS["text"]["primary"],
-                            "border-radius": DesignTokens.RADIUS["md"],
-                            "padding": f"{DesignTokens.SPACING['3']} {DesignTokens.SPACING['4']}",
-                            "margin": DesignTokens.SPACING["1"],
-                            "text-align": "center",
-                            "transition": "all 0.2s ease",
-                        },
-                        "nav-link:hover": {
-                            "background-color": DesignTokens.COLORS["primary"] + "20",
-                            "color": DesignTokens.COLORS["primary"],
-                        },
-                        "nav-link-selected": {
-                            "background-color": DesignTokens.COLORS["primary"],
-                            "color": DesignTokens.COLORS["text"]["inverse"],
-                            "font-weight": DesignTokens.TYPOGRAPHY["weights"]["semibold"],
-                        }
-                    }
-                )
-                
-                # Mapear página selecionada para módulo
-                if page_selected in config["pages"]:
-                    page_idx = config["pages"].index(page_selected)
-                    app_mode = page_selected
-                    selected_module = config["modules"][page_idx]
-                    break
+    )
     st.markdown("---")
 
     # ---------- CARREGAMENTO DE PÁGINAS ----------
-    
+
     # CSS global para componentes
     st.markdown(generate_button_styles(), unsafe_allow_html=True)
-    
-    # Dashboard como default se nenhuma página foi selecionada
-    if not app_mode:
-        app_mode = "Dashboard"
-        selected_module = "dashboard"
-    
+
     if app_mode == "Dashboard":
         show_enhanced_dashboard()
     elif app_mode == "Medições":
@@ -248,117 +223,213 @@ def main():
         valves.show()
     elif app_mode == "Ativações de Bomba":
         controller_activations.show()
-    elif app_mode == "Consumo de Energia":
-        energy_consumptions.show()
-    elif app_mode == "Consumo de Água":
-        water_consumptions.show()
     elif app_mode == "Estações de Monitoramento":
         monitoring_stations.show()
+    elif app_mode == "Consumos":
+        consumptions.show()
     elif app_mode == "Tarifas":
         tariff_schedules.show()
     elif app_mode == "Usuários":
         users.show()
 
 
+def fetch_home_data():
+    """Busca dados do endpoint /api/home conforme Swagger"""
+    token = st.session_state.get("token")
+    if not token:
+        return None
+    
+    from api import api_request
+    response = api_request("GET", "/api/home", token=token)
+    
+    if response and response.status_code == 200:
+        try:
+            return response.json()
+        except ValueError:
+            st.error("Erro ao processar resposta da API /api/home")
+            return None
+    elif response and response.status_code == 404:
+        st.warning("Endpoint /api/home não está disponível na API atual.")
+        return None
+    else:
+        st.error(f"Erro ao buscar dados do dashboard: HTTP {response.status_code if response else 'Sem conexão'}")
+        return None
+
+
 def show_enhanced_dashboard():
     """
-    Dashboard melhorado com cards de visão geral e navegação rápida
+    Dashboard melhorado com dados reais do endpoint /api/home
     """
     st.title("🏠 Dashboard - Visão Geral")
+
+    # Buscar dados do endpoint /api/home
+    with st.spinner("Carregando dados do dashboard..."):
+        home_data = fetch_home_data()
     
-    # Cards de métricas principais
-    col1, col2, col3, col4 = st.columns(4)
+    if home_data:
+        # Extrair dados conforme schema HomeResponse
+        monitoring_stations = home_data.get("monitoringStations", []) or []
+        controllers = home_data.get("controllers", []) or []
+        gateway_status = home_data.get("gateway", False)
+        
+        # Calcular métricas
+        total_stations = len(monitoring_stations)
+        active_stations = len([s for s in monitoring_stations if s.get("status", False)])
+        total_controllers = len(controllers)
+        online_controllers = len([c for c in controllers if c.get("status", False)])
+        total_valves_on = sum(c.get("numberOfValvesOn", 0) for c in controllers)
+        
+        # Cards de métricas principais
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            ComponentLibrary.metric_card(
+                title="Estações de Monitoramento",
+                value=f"{active_stations}/{total_stations}",
+                delta="Online" if active_stations > 0 else "Offline",
+                delta_color="normal" if active_stations > 0 else "inverse",
+                icon="🏭"
+            )
+
+        with col2:
+            controller_percentage = (online_controllers / total_controllers * 100) if total_controllers > 0 else 0
+            ComponentLibrary.metric_card(
+                title="Controladores Online",
+                value=f"{controller_percentage:.0f}%",
+                delta=f"{online_controllers}/{total_controllers}",
+                delta_color="normal",
+                icon="⚙️",
+            )
+
+        with col3:
+            ComponentLibrary.metric_card(
+                title="Válvulas Ativas",
+                value=str(total_valves_on),
+                delta="No momento",
+                delta_color="normal",
+                icon="💧",
+            )
+
+        with col4:
+            ComponentLibrary.metric_card(
+                title="Gateway",
+                value="Online" if gateway_status else "Offline",
+                delta="Conectado" if gateway_status else "Desconectado",
+                delta_color="normal" if gateway_status else "inverse",
+                icon="📡",
+            )
+
+        # Status do sistema detalhado
+        st.markdown("---")
+        
+        # Cards de estações de monitoramento
+        if monitoring_stations:
+            ComponentLibrary.card(
+                title="🏭 Estações de Monitoramento",
+                content=f"Exibindo {len(monitoring_stations)} estação(ões) no sistema:",
+                color="info"
+            )
+            
+            # Criar colunas para as estações (máx 3 por linha)
+            for i in range(0, len(monitoring_stations), 3):
+                cols = st.columns(3)
+                for j, station in enumerate(monitoring_stations[i:i+3]):
+                    if j < len(cols):
+                        with cols[j]:
+                            status_color = "success" if station.get("status", False) else "error"
+                            status_text = "✅ Online" if station.get("status", False) else "❌ Offline"
+                            avg_moisture = station.get("averageMoisture", 0)
+                            moisture_limit = station.get("moistureLimit", "N/A")
+                            
+                            station_name = station.get('name') or f"Estação {station.get('id', 'N/A')}"
+                            ComponentLibrary.card(
+                                title=f"📍 {station_name}",
+                                content=f"""
+                                **Status:** {status_text}
+                                **Umidade Média:** {avg_moisture:.1f}%
+                                **Limite:** {moisture_limit}
+                                """,
+                                color=status_color
+                            )
+        
+        # Cards de controladores
+        if controllers:
+            ComponentLibrary.card(
+                title="⚙️ Controladores",
+                content=f"Exibindo {len(controllers)} controlador(es) no sistema:",
+                color="info"
+            )
+            
+            # Criar colunas para os controladores (máx 3 por linha)
+            for i in range(0, len(controllers), 3):
+                cols = st.columns(3)
+                for j, controller in enumerate(controllers[i:i+3]):
+                    if j < len(cols):
+                        with cols[j]:
+                            status_color = "success" if controller.get("status", False) else "error"
+                            status_text = "✅ Online" if controller.get("status", False) else "❌ Offline"
+                            valves_on = controller.get("numberOfValvesOn", 0)
+                            
+                            controller_name = controller.get('name') or f"Controlador {controller.get('id', 'N/A')}"
+                            ComponentLibrary.card(
+                                title=f"🎛️ {controller_name}",
+                                content=f"""
+                                **Status:** {status_text}
+                                **Válvulas Ativas:** {valves_on}
+                                """,
+                                color=status_color
+                            )
+        
+        # Status geral do sistema
+        st.markdown("---")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            ComponentLibrary.card(
+                title="Sistema",
+                content="✅ Operacional" if (active_stations > 0 or online_controllers > 0) else "⚠️ Verificar",
+                color="success" if (active_stations > 0 or online_controllers > 0) else "warning"
+            )
+
+        with col2:
+            ComponentLibrary.card(
+                title="API",
+                content="🟢 Conectada",
+                color="success"
+            )
+
+        with col3:
+            ComponentLibrary.card(
+                title="Gateway",
+                content="🟢 Online" if gateway_status else "🔴 Offline",
+                color="success" if gateway_status else "error"
+            )
+
+        with col4:
+            ComponentLibrary.card(
+                title="Dados",
+                content=f"📊 {total_stations + total_controllers} dispositivos",
+                color="info"
+            )
     
-    with col1:
-        ComponentLibrary.metric_card(
-            title="Estações Ativas",
-            value="12",
-            delta="+2 hoje",
-            icon="🏭"
-        )
-    
-    with col2:
-        ComponentLibrary.metric_card(
-            title="Controladores Online", 
-            value="98%",
-            delta="Normal",
-            delta_color="normal",
-            icon="🎮"
-        )
-    
-    with col3:
-        ComponentLibrary.metric_card(
-            title="Consumo Hoje",
-            value="245 kWh",
-            delta="-12%",
-            delta_color="normal",
-            icon="⚡"
-        )
-    
-    with col4:
-        ComponentLibrary.metric_card(
-            title="Economia Mensal",
-            value="R$ 1.247",
-            delta="+8%",
-            delta_color="normal", 
-            icon="💰"
-        )
-    
-    st.markdown("---")
-    
-    # Seção de ações rápidas
-    st.subheader("🚀 Ações Rápidas")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        ComponentLibrary.card(
-            title="Monitoramento",
-            content="Visualizar medições em tempo real dos sensores e estações de monitoramento.",
-            icon="📊",
-            color="primary",
-            actions=[
-                {"label": "Ver Medições", "key": "goto_measurements"},
-                {"label": "Relatórios", "key": "goto_reports"}
-            ]
-        )
-    
-    with col2:
-        ComponentLibrary.card(
-            title="Controle",
-            content="Gerenciar controladores, válvulas e configurações de automação do sistema.", 
-            icon="🎮",
-            color="secondary",
-            actions=[
-                {"label": "Controladores", "key": "goto_controllers"},
-                {"label": "Válvulas", "key": "goto_valves"}
-            ]
-        )
-    
-    with col3:
-        ComponentLibrary.card(
-            title="Consumo",
-            content="Analisar consumo de energia e água com gráficos detalhados e projeções.",
-            icon="⚡",
-            color="warning",
-            actions=[
-                {"label": "Energia", "key": "goto_energy"},
-                {"label": "Água", "key": "goto_water"}
-            ]
-        )
-    
-    # Status do sistema
-    st.markdown("---")
-    st.subheader("🔧 Status do Sistema") 
-    
-    try:
-        # Usar o dashboard original como fallback
-        dashboard.show()
-    except Exception as e:
-        ComponentLibrary.alert(
-            f"Erro ao carregar dados do dashboard: {str(e)}",
-            alert_type="error"
-        )
+    else:
+        # Fallback com dados estáticos se a API não estiver disponível
+        st.info("🔄 Dados em tempo real não disponíveis. Exibindo informações do sistema.")
+        
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            ComponentLibrary.card(title="Sistema", content="✅ Online", color="success")
+
+        with col2:
+            ComponentLibrary.card(title="Interface", content="🟢 Funcionando", color="success")
+
+        with col3:
+            ComponentLibrary.card(title="Status", content="⚠️ API Limitada", color="warning")
+
+        with col4:
+            ComponentLibrary.card(title="Modo", content="📋 Configuração", color="info")
 
 
 if __name__ == "__main__":

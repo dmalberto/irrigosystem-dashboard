@@ -12,7 +12,7 @@ from src.ui_components import (
     controller_selector,
     date_range_filter,
     handle_api_response_v2,
-    show_loading_state
+    LoadingStates
 )
 
 
@@ -156,7 +156,7 @@ def show():
     
     # Seletor de controlador padronizado
     controller_id, controller_name = controller_selector(
-        token, "Controlador (Opcional)", include_all_option=True
+        token, "Controlador (Opcional)", include_all_option=True, context="water_consumption"
     )
     
     # Filtro de período (conforme Swagger)
@@ -173,7 +173,7 @@ def show():
 
     # Botão para buscar dados
     if st.sidebar.button("🔍 Buscar Dados"):
-        with show_loading_state("Carregando dados de consumo..."):
+        with LoadingStates.spinner_with_cancel("Carregando dados de consumo..."):
             df_consumption = fetch_water_consumption(
                 token=token,
                 controller_id=controller_id,
@@ -192,7 +192,7 @@ def show():
             df_calculado = process_water_consumption(df_consumption)
 
             # Exibir dados
-            st.subheader("💧 Dados de Consumo de Água")
+            st.markdown("### 💧 Dados de Consumo de Água")
             display_columns = [
                 "date_display" if col == "date" else col
                 for col in ["date", "consumption"]

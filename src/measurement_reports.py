@@ -138,7 +138,7 @@ def show():
         st.error("Usuário não autenticado.")
         return
 
-    st.markdown("### Filtros para Relatórios (POST)")
+    st.markdown("### Filtros para Relatórios")
 
     # Seleção de estação usando seletor
     station_id, station_name = selecionar_estacao()
@@ -168,7 +168,7 @@ def show():
             "period": period,
         }
 
-        st.subheader("Resultado: current-average")
+        st.markdown("### Resultado: current-average")
         resp_avg = post_current_average(token, filter_body)
         if resp_avg and resp_avg.status_code == 200:
             data_avg = resp_avg.json()
@@ -185,7 +185,7 @@ def show():
         else:
             st.error("Falha ao obter 'current-average'.")
 
-        st.subheader("Resultado: report")
+        st.markdown("### Resultado: report")
         resp_report = post_measurements_report(token, filter_body)
         if resp_report and resp_report.status_code == 200:
             data_report = resp_report.json()
