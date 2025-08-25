@@ -43,7 +43,7 @@ O IrrigoSystem Dashboard é uma aplicação web desenvolvida em Streamlit que pe
 
 1. **Clone o repositório**
 ```bash
-git clone <repository-url>
+git clone https://github.com/dmalberto/irrigosystem-dashboard
 cd irrigosystem-dashboard
 ```
 
@@ -72,12 +72,6 @@ streamlit run app.py
 API_BASE_URL=http://localhost:8000
 API_TIMEOUT=30
 
-# Authentication
-JWT_SECRET_KEY=your-secret-key-here
-SESSION_TIMEOUT=3600
-
-# Database (se aplicável)
-DATABASE_URL=your-database-url
 
 # Cache Configuration
 CACHE_TTL=300
@@ -272,7 +266,7 @@ chore: tarefas de manutenção
 
 1. **Configure variáveis de produção**
 ```env
-API_BASE_URL=https://api.irrigosystem.com
+API_BASE_URL=<url_da_api>
 ENABLE_CACHE=true
 LOG_LEVEL=INFO
 ```
